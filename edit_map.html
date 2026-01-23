@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Map Editor</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      height: 100vh; 
+      font-family: sans-serif; 
+      overflow: hidden;
+      background: #2c3e50;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    canvas { 
+      border: 1px solid #555; 
+      image-rendering: pixelated; 
+      cursor: crosshair; 
+      background: #34495e;
+    }
+    
+    .container { 
+      display: flex; 
+      flex-direction: column; 
+      width: 100%;
+      margin-bottom: 8px;
+    }
+    
+    .palette { 
+      display: flex; 
+      gap: 4px; 
+      margin-top: 8px; 
+      flex-wrap: wrap;
+      max-height: 80px;
+      overflow-y: auto;
+    }
+    
+    .tile-swatch { 
+      position: relative; 
+      margin: 2px;
+    }
+    
+    .tile-checkbox { 
+      position: absolute; 
+      top: 1px; 
+      left: 1px; 
+      z-index: 2;
+      width: 12px;
+      height: 12px;
+    }
+    
+    .selected { border: 2px solid #f00; }
+    
+    button, input { 
+      margin-top: 6px; 
+      padding: 5px 8px; 
+      cursor: pointer; 
+      border: 1px solid #555;
+      background: #34495e;
+      color: white;
+      border-radius: 3px;
+      font-size: 0.85em;
+    }
+    
+    button:hover, input:hover {
+      background: #3d566e;
+    }
+    
+    .tool-panel { 
+      display: flex; 
+      gap: 6px; 
+      align-items: center; 
+      margin-top: 8px; 
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    
+    h2 { 
+      margin-bottom: 6px; 
+      color: #ecf0f1;
+      font-size: 1.2em;
+    }
+    
+    .mode-buttons { 
+      display: flex; 
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    
+    .mode-buttons button.active { 
+      background: #27ae60; 
+      color: white; 
+      border-color: #219653;
+    }
+    
+    .file-input-container { 
+      display: flex; 
+      flex-direction: column;
+      width: 100%;
+      max-width: 180px;
+    }
+    
+    .file-input-container label { 
+      margin-bottom: 2px; 
+      font-weight: bold;
+      font-size: 0.8em;
+      color: #bdc3c7;
+    }
+    
+    .zoom-controls { 
+      display: flex; 
+      gap: 4px; 
+      align-items: center; 
+      margin-left: auto;
+    }
+    
+    .map-container { 
+      position: relative; 
+      overflow: auto; 
+      border: 1px solid #555; 
+      flex: 1;
+      width: 100%;
+      margin-top: 8px;
+      background: #34495e;
+      border-radius: 4px;
+    }
+    
+    .coord-display { 
+      position: absolute; 
+      top: 4px; 
+      left: 4px; 
+      background: rgba(44, 62, 80, 0.95); 
+      padding: 3px 6px; 
+      font-size: 10px; 
+      z-index: 10;
+      border: 1px solid #555;
+      border-radius: 2px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+      color: #ecf0f1;
+    }
+    
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #3d566e;
+    }
+    
+    .zoom-display {
+      background: #34495e;
+      color: white;
+      padding: 2px 5px;
+      border: 1px solid #555;
+      border-radius: 2px;
+      min-width: 45px;
+      text-align: center;
+      font-size: 0.85em;
+    }
+    
+    .tile-palette-container {
+      height: 100px; /* Reduced height */
+      overflow-y: auto;
+      border: 1px solid #3d566e;
+      border-radius: 3px;
+      padding: 6px;
+      background: #2c3e50;
+      margin-top: 6px;
+    }
+    
+    .map-controls {
+      background: #34495e;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #3d566e;
+      margin-bottom: 6px;
+    }
+    
+    .fit-button {
+      background: #3498db;
+      color: white;
+      border-color: #2980b9;
+    }
+    
+    .fit-button:hover {
+      background: #2980b9;
+    }
+    
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 8px;
+      background: #34495e;
+      border-top: 1px solid #3d566e;
+      font-size: 0.8em;
+      color: #bdc3c7;
+    }
+    
+    /* Main layout */
+    .main-content {
+      flex: 1;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      background: #2c3e50;
+      overflow: hidden;
+    }
+    
+    /* File Menu Styles */
+    .file-menu {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .file-menu-btn {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.85em;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .file-menu-btn:hover {
+      background: #2980b9;
+    }
+    
+    .file-menu-content {
+      display: none;
+      position: absolute;
+      background-color: #34495e;
+      min-width: 200px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      border: 1px solid #3d566e;
+      border-radius: 3px;
+      z-index: 100;
+      padding: 5px 0;
+      top: 100%;
+      left: 0;
+    }
+    
+    .file-menu-content.show {
+      display: block;
+    }
+    
+    .file-menu-item {
+      display: block;
+      width: 100%;
+      padding: 8px 12px;
+      text-align: left;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85em;
+      color: #ecf0f1;
+    }
+    
+    .file-menu-item:hover {
+      background-color: #3d566e;
+    }
+    
+    .menu-divider {
+      height: 1px;
+      background: #3d566e;
+      margin: 5px 0;
+    }
+    
+    .file-input-hidden {
+      display: none;
+    }
+    
+    /* Tile numbering */
+    .tile-number {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background: rgba(44, 62, 80, 0.8);
+      color: white;
+      font-size: 8px;
+      padding: 1px 3px;
+      border-radius: 2px 0 0 0;
+    }
+    
+    /* Maximize map space */
+    .controls-compact {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .top-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .quick-actions {
+      display: flex;
+      gap: 5px;
+    }
+    
+    /* Scrollbar styling */
+    .tile-palette-container::-webkit-scrollbar,
+    .map-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .tile-palette-container::-webkit-scrollbar-track,
+    .map-container::-webkit-scrollbar-track {
+      background: #2c3e50;
+      border-radius: 3px;
+    }
+    
+    .tile-palette-container::-webkit-scrollbar-thumb,
+    .map-container::-webkit-scrollbar-thumb {
+      background: #4a6583;
+      border-radius: 3px;
+    }
+    
+    .tile-palette-container::-webkit-scrollbar-thumb:hover,
+    .map-container::-webkit-scrollbar-thumb:hover {
+      background: #5d7fa3;
+    }
+    
+    /* Tile limit warning */
+    .tile-limit-warning {
+      color: #e74c3c;
+      font-size: 0.8em;
+      margin-top: 5px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="main-content">
+  <div class="controls-compact">
+    <div class="top-controls">
+      <div class="section-header" style="border: none; padding: 0; margin: 0;">
+        <h2>🗺️ Map Editor</h2>
+        <span style="color: #bdc3c7; font-size: 0.85em;">50x50 tiles</span>
+      </div>
+      
+      <!-- File Menu -->
+      <div class="file-menu">
+        <button class="file-menu-btn" id="fileMenuBtn">
+          📁 File
+          <span style="font-size: 0.7em;">▼</span>
+        </button>
+        <div class="file-menu-content" id="fileMenuContent">
+          <button class="file-menu-item" id="menuImportTiles">📥 Import Tiles...</button>
+          <button class="file-menu-item" id="menuImportMap">📂 Import Map...</button>
+          <div class="menu-divider"></div>
+          <button class="file-menu-item" id="menuSaveMap">💾 Save Map as TXT</button>
+          <button class="file-menu-item" id="menuExportImage">🖼️ Export as PNG</button>
+          <div class="menu-divider"></div>
+          <button class="file-menu-item" id="menuClearMap" style="color: #e74c3c;">🗑️ Clear Map</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="map-controls">
+      <div class="tool-panel">
+        <!-- Mode buttons -->
+        <div class="mode-buttons">
+          <button id="modePlace" class="active">🖌️ Place</button>
+          <button id="modeSelect">🔲 Select</button>
+          <button id="clearSelectedAreaBtn">🗑️ Clear Area</button>
+          <button id="deselectAllBtn">✖️ Deselect All</button>
+        </div>
+        
+        <!-- Zoom controls -->
+        <div class="zoom-controls">
+          <button id="fitMapBtn" class="fit-button">📐 Fit</button>
+          <button id="zoomOutBtn">➖</button>
+          <div class="zoom-display" id="zoomLevel">Fit</div>
+          <button id="zoomInBtn">➕</button>
+          <button id="zoom1xBtn">1x</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Hidden file inputs -->
+  <input type="file" id="importTileForMap" accept="image/png" multiple class="file-input-hidden"/>
+  <input type="file" id="importMapTXT" accept=".txt" class="file-input-hidden"/>
+  
+  <!-- MAP EDITOR AREA - Maximized space -->
+  <div class="map-container" id="mapContainer">
+    <div class="coord-display" id="coordDisplay">X: 0, Y: 0</div>
+    <canvas id="mapEditor"></canvas>
+  </div>
+  
+  <div class="status-bar">
+    <span id="mapInfo">Map: 50x50 tiles</span>
+    <span id="viewInfo">View: Fit to screen</span>
+    <span id="selectedInfo">Selected: 0 tiles</span>
+    <span id="tileCountInfo">Tiles: 0/2000</span>
+  </div>
+  
+  <!-- Compact tile palette -->
+  <div style="margin-top: 5px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0; font-size: 1em; color: #ecf0f1;">🎨 Tile Palette</h3>
+      <span id="tileInfo" style="font-size: 0.8em; color: #bdc3c7;">No tiles imported</span>
+    </div>
+    <div class="tile-limit-warning" id="tileLimitWarning">Tile limit: 2000 (000-1999)</div>
+    <div class="tile-palette-container">
+      <div class="palette" id="tilePalette"></div>
+    </div>
+  </div>
+</div>
+
+<!-- jQuery -->
+<script src="jquery.js"></script>
+
+<script>
+// === Settings ===
+const OriginalTileSize = 16;
+const MIN_TileScale = 1;
+const MAX_TileScale = 8;
+let TileScale = 0; // 0 means "fit to screen"
+const MapCols = 50;
+const MapRows = 50;
+const MAX_TILES = 2000; // Maximum number of tiles (000-1999)
+
+// === Map Editor Variables ===
+let tileLibrary = [];
+let selectedTileIndices = new Set();
+let selectedTileIndex = 0;
+const map = [];
+
+// Selection rectangle
+let selectionRect = {
+  startX: -1,
+  startY: -1,
+  endX: -1,
+  endY: -1,
+  isSelecting: false
+};
+
+// Editor mode: 'place' or 'select'
+let editorMode = 'place';
+
+// Canvas contexts
+let mapEditorCtx;
+let isFitToScreen = true;
+
+// Initialize empty map
+for (let y = 0; y < MapRows; y++) {
+  map[y] = [];
+  for (let x = 0; x < MapCols; x++) {
+    map[y][x] = -1;
+  }
+}
+
+// === Canvas Setup ===
+const mapEditorCanvas = document.getElementById('mapEditor');
+const mapContainer = document.getElementById('mapContainer');
+
+// Calculate fit-to-screen zoom level
+function calculateFitZoom() {
+  const container = mapContainer;
+  const containerWidth = container.clientWidth - 20;
+  const containerHeight = container.clientHeight - 20;
+  
+  const maxWidthZoom = Math.floor(containerWidth / (MapCols * OriginalTileSize));
+  const maxHeightZoom = Math.floor(containerHeight / (MapRows * OriginalTileSize));
+  
+  return Math.max(1, Math.min(maxWidthZoom, maxHeightZoom));
+}
+
+// Initialize map editor canvas
+function initMapEditorCanvas() {
+  let effectiveTileScale = TileScale;
+  if (isFitToScreen) {
+    effectiveTileScale = calculateFitZoom();
+  }
+  
+  mapEditorCanvas.width = MapCols * OriginalTileSize * effectiveTileScale;
+  mapEditorCanvas.height = MapRows * OriginalTileSize * effectiveTileScale;
+  mapEditorCtx = mapEditorCanvas.getContext('2d');
+}
+
+// Update map canvas size based on zoom
+function updateMapCanvasSize() {
+  let effectiveTileScale = TileScale;
+  if (isFitToScreen && TileScale === 0) {
+    effectiveTileScale = calculateFitZoom();
+  }
+  
+  mapEditorCanvas.width = MapCols * OriginalTileSize * effectiveTileScale;
+  mapEditorCanvas.height = MapRows * OriginalTileSize * effectiveTileScale;
+  drawMap();
+  updateZoomDisplay();
+  updateViewInfo();
+}
+
+// Update view information
+function updateViewInfo() {
+  const viewInfo = $('#viewInfo');
+  if (isFitToScreen) {
+    const fitZoom = calculateFitZoom();
+    viewInfo.text(`View: Fit (${fitZoom}x)`);
+  } else {
+    viewInfo.text(`View: ${TileScale}x`);
+  }
+}
+
+// === Map Editor Functions ===
+function drawMap() {
+  if (!mapEditorCtx) return;
+  
+  const effectiveTileScale = isFitToScreen && TileScale === 0 ? calculateFitZoom() : TileScale;
+  
+  // Clear map
+  mapEditorCtx.fillStyle = '#2c3e50';
+  mapEditorCtx.fillRect(0, 0, mapEditorCanvas.width, mapEditorCanvas.height);
+  
+  // Draw grid (only if zoom is at least 2x)
+  if (effectiveTileScale >= 2) {
+    mapEditorCtx.strokeStyle = '#3d566e';
+    mapEditorCtx.lineWidth = 1;
+    
+    for (let y = 0; y <= MapRows; y++) {
+      mapEditorCtx.beginPath();
+      mapEditorCtx.moveTo(0, y * OriginalTileSize * effectiveTileScale);
+      mapEditorCtx.lineTo(mapEditorCanvas.width, y * OriginalTileSize * effectiveTileScale);
+      mapEditorCtx.stroke();
+    }
+    for (let x = 0; x <= MapCols; x++) {
+      mapEditorCtx.beginPath();
+      mapEditorCtx.moveTo(x * OriginalTileSize * effectiveTileScale, 0);
+      mapEditorCtx.lineTo(x * OriginalTileSize * effectiveTileScale, mapEditorCanvas.height);
+      mapEditorCtx.stroke();
+    }
+  }
+  
+  // Draw tiles
+  for (let y = 0; y < MapRows; y++) {
+    for (let x = 0; x < MapCols; x++) {
+      const tileIndex = map[y][x];
+      if (tileIndex >= 0 && tileIndex < tileLibrary.length) {
+        const tileCanvas = tileLibrary[tileIndex].canvas;
+        mapEditorCtx.drawImage(
+          tileCanvas,
+          x * OriginalTileSize * effectiveTileScale,
+          y * OriginalTileSize * effectiveTileScale,
+          OriginalTileSize * effectiveTileScale,
+          OriginalTileSize * effectiveTileScale
+        );
+      }
+    }
+  }
+  
+  // Draw selection rectangle
+  if (editorMode === 'select' && selectionRect.startX >= 0 && selectionRect.startY >= 0 &&
+      selectionRect.endX >= 0 && selectionRect.endY >= 0) {
+    const cellSize = OriginalTileSize * effectiveTileScale;
+    const x1 = Math.min(selectionRect.startX, selectionRect.endX);
+    const y1 = Math.min(selectionRect.startY, selectionRect.endY);
+    const x2 = Math.max(selectionRect.startX, selectionRect.endX);
+    const y2 = Math.max(selectionRect.startY, selectionRect.endY);
+    
+    mapEditorCtx.strokeStyle = '#3498db';
+    mapEditorCtx.lineWidth = 2;
+    mapEditorCtx.setLineDash([5, 3]);
+    mapEditorCtx.strokeRect(
+      x1 * cellSize,
+      y1 * cellSize,
+      (x2 - x1 + 1) * cellSize,
+      (y2 - y1 + 1) * cellSize
+    );
+    mapEditorCtx.setLineDash([]);
+  }
+}
+
+// Extract number from filename for sorting (supports formats like 000, 001, 042, etc.)
+function extractTileNumber(filename) {
+  // Remove extension and try to extract numbers
+  const nameWithoutExt = filename.replace('.png', '').replace('.PNG', '');
+  
+  // Try to find numbers in the filename
+  const match = nameWithoutExt.match(/\d+/);
+  if (match) {
+    const num = parseInt(match[0]);
+    // Ensure it's within valid range (0-1999)
+    return Math.min(Math.max(num, 0), 1999);
+  }
+  
+  // If no numbers found, try to parse the whole string as number
+  const parsed = parseInt(nameWithoutExt);
+  if (!isNaN(parsed)) {
+    return Math.min(Math.max(parsed, 0), 1999);
+  }
+  
+  // Default to 0 if no number found
+  return 0;
+}
+
+// Sort tile library by extracted numbers
+function sortTileLibrary() {
+  tileLibrary.sort((a, b) => {
+    return extractTileNumber(a.name) - extractTileNumber(b.name);
+  });
+}
+
+// Update tile count display
+function updateTileCount() {
+  $('#tileCountInfo').text(`Tiles: ${tileLibrary.length}/${MAX_TILES}`);
+  
+  // Show warning if approaching limit
+  const warning = $('#tileLimitWarning');
+  if (tileLibrary.length >= MAX_TILES * 0.9) {
+    warning.show();
+    warning.css('color', '#e74c3c');
+    warning.text(`Warning: ${tileLibrary.length}/${MAX_TILES} tiles (limit: 000-1999)`);
+  } else if (tileLibrary.length >= MAX_TILES * 0.7) {
+    warning.show();
+    warning.css('color', '#f39c12');
+    warning.text(`${tileLibrary.length}/${MAX_TILES} tiles (limit: 000-1999)`);
+  } else {
+    warning.hide();
+  }
+}
+
+function updateTilePalette() {
+  const tilePaletteDiv = $('#tilePalette');
+  tilePaletteDiv.empty();
+  
+  if (tileLibrary.length === 0) {
+    tilePaletteDiv.html('<div style="color: #7f8c8d; text-align: center; padding: 15px; font-style: italic;">Import tiles to see them here</div>');
+    return;
+  }
+  
+  // Sort tiles before displaying
+  sortTileLibrary();
+  
+  tileLibrary.forEach((tile, idx) => {
+    const container = $('<div>').css({
+      position: 'relative',
+      display: 'inline-block',
+      margin: '2px'
+    });
+    
+    const canvas = $('<canvas>').attr({ width: 24, height: 24 });
+    const ctx = canvas[0].getContext('2d');
+    
+    // Draw tile preview
+    ctx.drawImage(tile.canvas, 0, 0, 24, 24);
+    
+    // Add border if selected
+    if (selectedTileIndices.has(idx)) {
+      ctx.strokeStyle = '#e74c3c';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, 0, 24, 24);
+    } else if (idx === selectedTileIndex) {
+      ctx.strokeStyle = '#3498db';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, 0, 24, 24);
+    }
+    
+    canvas.addClass('tile-swatch');
+    
+    // Extract and display tile number
+    const tileNumber = extractTileNumber(tile.name);
+    const displayNumber = tileNumber.toString().padStart(3, '0');
+    canvas.attr('title', `${displayNumber}: ${tile.name}`);
+    
+    // Add tile number overlay
+    const numberOverlay = $('<div>').addClass('tile-number').text(displayNumber);
+    
+    // Add checkbox for multiple selection
+    const checkbox = $('<input>').attr({
+      type: 'checkbox',
+      class: 'tile-checkbox'
+    }).prop('checked', selectedTileIndices.has(idx));
+    
+    checkbox.on('click', function(e) {
+      e.stopPropagation();
+      if ($(this).prop('checked')) {
+        selectedTileIndices.add(idx);
+      } else {
+        selectedTileIndices.delete(idx);
+      }
+      if (selectedTileIndices.size > 0) {
+        selectedTileIndex = Array.from(selectedTileIndices)[0];
+      }
+      updateTilePalette();
+    });
+    
+    container.on('click', function(e) {
+      if (e.shiftKey) {
+        if (selectedTileIndices.has(idx)) {
+          selectedTileIndices.delete(idx);
+        } else {
+          selectedTileIndices.add(idx);
+        }
+        if (selectedTileIndices.size > 0) {
+          selectedTileIndex = Array.from(selectedTileIndices)[0];
+        }
+      } else {
+        selectedTileIndex = idx;
+        selectedTileIndices.clear();
+        selectedTileIndices.add(idx);
+      }
+      updateTilePalette();
+      updateSelectedInfo();
+    });
+    
+    container.append(canvas, checkbox, numberOverlay);
+    tilePaletteDiv.append(container);
+  });
+  
+  // Update info display
+  const tileInfo = $('#tileInfo');
+  if (tileLibrary.length === 0) {
+    tileInfo.text('No tiles imported');
+  } else {
+    tileInfo.text(`${tileLibrary.length} tiles (sorted 000-${(tileLibrary.length-1).toString().padStart(3, '0')})`);
+  }
+  
+  updateTileCount();
+  updateSelectedInfo();
+}
+
+function updateZoomDisplay() {
+  const zoomLevel = $('#zoomLevel');
+  if (isFitToScreen && TileScale === 0) {
+    zoomLevel.text('Fit');
+  } else {
+    zoomLevel.text(`${TileScale}x`);
+  }
+}
+
+function updateSelectedInfo() {
+  const selectedInfo = $('#selectedInfo');
+  selectedInfo.text(`Selected: ${selectedTileIndices.size} tile${selectedTileIndices.size !== 1 ? 's' : ''}`);
+}
+
+// === Event Listeners ===
+function initEventListeners() {
+  // File Menu functionality
+  $('#fileMenuBtn').on('click', function(e) {
+    e.stopPropagation();
+    $('#fileMenuContent').toggleClass('show');
+  });
+  
+  // Close menu when clicking elsewhere
+  $(document).on('click', function() {
+    $('#fileMenuContent').removeClass('show');
+  });
+  
+  // Prevent menu from closing when clicking inside it
+  $('#fileMenuContent').on('click', function(e) {
+    e.stopPropagation();
+  });
+  
+  // File menu items
+  $('#menuImportTiles').on('click', function() {
+    $('#importTileForMap').click();
+  });
+  
+  $('#menuImportMap').on('click', function() {
+    $('#importMapTXT').click();
+  });
+  
+  $('#menuSaveMap').on('click', function() {
+    saveMapAsTXT();
+  });
+  
+  $('#menuExportImage').on('click', function() {
+    exportMapAsPNG();
+  });
+  
+  $('#menuClearMap').on('click', function() {
+    if (confirm('Clear the entire 50x50 map?')) {
+      for (let y = 0; y < MapRows; y++) {
+        for (let x = 0; x < MapCols; x++) {
+          map[y][x] = -1;
+        }
+      }
+      drawMap();
+    }
+  });
+  
+  // Deselect All button
+  $('#deselectAllBtn').on('click', function() {
+    selectedTileIndices.clear();
+    if (tileLibrary.length > 0) {
+      selectedTileIndex = 0;
+      selectedTileIndices.add(0);
+    }
+    updateTilePalette();
+  });
+  
+  // Map Editor Event Listeners
+  let isDragging = false;
+
+  function updateCoordDisplay(x, y) {
+    $('#coordDisplay').text(`X: ${x}, Y: ${y}`);
+  }
+
+  function getMapCoordinates(e) {
+    const rect = mapEditorCanvas.getBoundingClientRect();
+    const scrollLeft = mapContainer.scrollLeft;
+    const scrollTop = mapContainer.scrollTop;
+    
+    const effectiveTileScale = isFitToScreen && TileScale === 0 ? calculateFitZoom() : TileScale;
+    const x = Math.floor((e.clientX - rect.left + scrollLeft) / (OriginalTileSize * effectiveTileScale));
+    const y = Math.floor((e.clientY - rect.top + scrollTop) / (OriginalTileSize * effectiveTileScale));
+    
+    return { x, y };
+  }
+
+  $(mapEditorCanvas).on('mousemove', function(e) {
+    const { x, y } = getMapCoordinates(e);
+    updateCoordDisplay(x, y);
+    
+    if (x >= 0 && x < MapCols && y >= 0 && y < MapRows) {
+      if (isDragging && editorMode === 'place' && tileLibrary.length > 0) {
+        map[y][x] = selectedTileIndex;
+        drawMap();
+      } else if (selectionRect.isSelecting && editorMode === 'select') {
+        selectionRect.endX = x;
+        selectionRect.endY = y;
+        drawMap();
+      }
+    }
+  });
+
+  $(mapEditorCanvas).on('mousedown', function(e) {
+    const { x, y } = getMapCoordinates(e);
+    
+    if (x >= 0 && x < MapCols && y >= 0 && y < MapRows) {
+      if (editorMode === 'place' && tileLibrary.length > 0) {
+        map[y][x] = selectedTileIndex;
+        isDragging = true;
+        drawMap();
+      } else if (editorMode === 'select') {
+        selectionRect.startX = x;
+        selectionRect.startY = y;
+        selectionRect.endX = x;
+        selectionRect.endY = y;
+        selectionRect.isSelecting = true;
+        drawMap();
+      }
+    }
+  });
+
+  $(mapEditorCanvas).on('mouseup', function() {
+    isDragging = false;
+    selectionRect.isSelecting = false;
+  });
+
+  $(mapEditorCanvas).on('mouseleave', function() {
+    isDragging = false;
+    selectionRect.isSelecting = false;
+  });
+
+  // Zoom Functions
+  $('#zoomInBtn').on('click', function() {
+    isFitToScreen = false;
+    if (TileScale < MAX_TileScale) {
+      TileScale = TileScale === 0 ? 1 : TileScale + 1;
+      updateMapCanvasSize();
+    }
+  });
+
+  $('#zoomOutBtn').on('click', function() {
+    isFitToScreen = false;
+    if (TileScale > MIN_TileScale) {
+      TileScale--;
+      updateMapCanvasSize();
+    }
+  });
+
+  $('#zoom1xBtn').on('click', function() {
+    isFitToScreen = false;
+    TileScale = 1;
+    updateMapCanvasSize();
+  });
+
+  $('#fitMapBtn').on('click', function() {
+    isFitToScreen = true;
+    TileScale = 0;
+    updateMapCanvasSize();
+  });
+
+  // Import PNG for Map Editor
+  $('#importTileForMap').on('change', function(e) {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    
+    // Check if adding these files would exceed the limit
+    if (tileLibrary.length + files.length > MAX_TILES) {
+      alert(`Cannot import ${files.length} tiles. Maximum limit is ${MAX_TILES} tiles (000-1999).\nCurrent: ${tileLibrary.length}/${MAX_TILES}`);
+      return;
+    }
+    
+    let loadedCount = 0;
+    
+    files.forEach((file, fileIndex) => {
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+          const tileCanvas = document.createElement('canvas');
+          tileCanvas.width = OriginalTileSize;
+          tileCanvas.height = OriginalTileSize;
+          const tileCtx = tileCanvas.getContext('2d');
+          
+          tileCtx.drawImage(img, 0, 0, OriginalTileSize, OriginalTileSize);
+          
+          tileLibrary.push({
+            image: img,
+            name: file.name,
+            canvas: tileCanvas
+          });
+          
+          loadedCount++;
+          
+          // After all files are loaded
+          if (loadedCount === files.length) {
+            // Auto-select the first new tile
+            selectedTileIndices.clear();
+            selectedTileIndex = tileLibrary.length - files.length;
+            selectedTileIndices.add(selectedTileIndex);
+            
+            // Sort and update display
+            sortTileLibrary();
+            updateTilePalette();
+            drawMap();
+            alert(`Added ${files.length} tile(s) to library. Sorted by number (000-1999).\nTotal: ${tileLibrary.length}/${MAX_TILES}`);
+          }
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+
+  // Import Map from TXT
+  $('#importMapTXT').on('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (tileLibrary.length === 0) {
+      alert('Please import some tiles first before loading a map!');
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      const text = evt.target.result;
+      const lines = text.split('\n');
+      
+      for (let y = 0; y < MapRows; y++) {
+        for (let x = 0; x < MapCols; x++) {
+          map[y][x] = -1;
+        }
+      }
+      
+      let readingMap = false;
+      let lineIndex = 0;
+      
+      for (const line of lines) {
+        const trimmed = line.trim();
+        
+        if (trimmed === '' || trimmed.startsWith('#')) {
+          continue;
+        }
+        
+        if (!readingMap) {
+          readingMap = true;
+        }
+        
+        if (readingMap && lineIndex < MapRows) {
+          const cells = trimmed.split(/\s+/);
+          for (let x = 0; x < Math.min(MapCols, cells.length); x++) {
+            const cell = cells[x];
+            if (cell === '.' || cell === '-1') {
+              map[lineIndex][x] = -1;
+            } else {
+              const tileIndex = parseInt(cell);
+              if (!isNaN(tileIndex) && tileIndex >= 0 && tileIndex < tileLibrary.length) {
+                map[lineIndex][x] = tileIndex;
+              }
+            }
+          }
+          lineIndex++;
+        }
+        
+        if (lineIndex >= MapRows) break;
+      }
+      
+      drawMap();
+      alert('Map loaded successfully!');
+    };
+    reader.readAsText(file);
+  });
+
+  $('#clearSelectedAreaBtn').on('click', function() {
+    if (selectionRect.startX < 0 || selectionRect.startY < 0 || 
+        selectionRect.endX < 0 || selectionRect.endY < 0) {
+      alert('No area selected! Use Select Mode to select an area first.');
+      return;
+    }
+    
+    const x1 = Math.min(selectionRect.startX, selectionRect.endX);
+    const y1 = Math.min(selectionRect.startY, selectionRect.endY);
+    const x2 = Math.max(selectionRect.startX, selectionRect.endX);
+    const y2 = Math.max(selectionRect.startY, selectionRect.endY);
+    
+    if (confirm(`Clear the selected area (${x2-x1+1}x${y2-y1+1})?`)) {
+      for (let y = y1; y <= y2; y++) {
+        for (let x = x1; x <= x2; x++) {
+          if (y >= 0 && y < MapRows && x >= 0 && x < MapCols) {
+            map[y][x] = -1;
+          }
+        }
+      }
+      drawMap();
+    }
+  });
+
+  // Mode switching
+  $('#modePlace').on('click', function() {
+    editorMode = 'place';
+    $('#modePlace').addClass('active');
+    $('#modeSelect').removeClass('active');
+    selectionRect.startX = selectionRect.startY = selectionRect.endX = selectionRect.endY = -1;
+    drawMap();
+  });
+
+  $('#modeSelect').on('click', function() {
+    editorMode = 'select';
+    $('#modeSelect').addClass('active');
+    $('#modePlace').removeClass('active');
+    drawMap();
+  });
+}
+
+// === File Operations ===
+function saveMapAsTXT() {
+  if (tileLibrary.length === 0) {
+    alert('No tiles imported! Import some PNG tiles first.');
+    return;
+  }
+  
+  let text = '# Map Data\n';
+  text += '# Map size: 50x50 tiles\n';
+  text += '# Tile Index to Name mapping (sorted):\n';
+  
+  // Sort before saving
+  sortTileLibrary();
+  
+  tileLibrary.forEach((tile, idx) => {
+    const tileNumber = extractTileNumber(tile.name);
+    const displayNumber = tileNumber.toString().padStart(3, '0');
+    text += `# ${idx}: ${displayNumber}_${tile.name}\n`;
+  });
+  text += '\n# Map (50x50):\n';
+  
+  for (let y = 0; y < MapRows; y++) {
+    const row = map[y].map(index => index === -1 ? '.' : index).join(' ');
+    text += row + '\n';
+  }
+  
+  const blob = new Blob([text], { type: "text/plain" });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `map_${Date.now()}.txt`;
+  link.click();
+}
+
+function exportMapAsPNG() {
+  if (tileLibrary.length === 0) {
+    alert('No tiles imported! Import some PNG tiles first.');
+    return;
+  }
+  
+  // Create a temporary canvas at 1x scale for export
+  const exportCanvas = document.createElement('canvas');
+  exportCanvas.width = MapCols * OriginalTileSize;
+  exportCanvas.height = MapRows * OriginalTileSize;
+  const exportCtx = exportCanvas.getContext('2d');
+  
+  // Draw background
+  exportCtx.fillStyle = '#2c3e50';
+  exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+  
+  // Draw tiles at 1x scale
+  for (let y = 0; y < MapRows; y++) {
+    for (let x = 0; x < MapCols; x++) {
+      const tileIndex = map[y][x];
+      if (tileIndex >= 0 && tileIndex < tileLibrary.length) {
+        const tileCanvas = tileLibrary[tileIndex].canvas;
+        exportCtx.drawImage(
+          tileCanvas,
+          x * OriginalTileSize,
+          y * OriginalTileSize,
+          OriginalTileSize,
+          OriginalTileSize
+        );
+      }
+    }
+  }
+  
+  // Create download link
+  const link = document.createElement('a');
+  link.href = exportCanvas.toDataURL('image/png');
+  link.download = `map_${Date.now()}.png`;
+  link.click();
+}
+
+// === Initialize Everything ===
+function initApp() {
+  initMapEditorCanvas();
+  initEventListeners();
+  drawMap();
+  updateZoomDisplay();
+  updateViewInfo();
+  updateSelectedInfo();
+  updateTileCount();
+}
+
+// Start the app when page loads
+$(document).ready(function() {
+  initApp();
+});
+
+// Handle window resize - recalculate fit-to-screen
+$(window).on('resize', function() {
+  if (isFitToScreen || TileScale === 0) {
+    updateMapCanvasSize();
+  }
+});
+</script>
+
+</body>
+</html>
