@@ -10,7 +10,6 @@
       overflow: hidden;
       background: #1a1a1a;
       display: flex;
-      flex-direction: column;
     }
     
     canvas { 
@@ -20,46 +19,73 @@
       background: #222;
     }
     
+    /* Main container with left map and right tiles */
+    .main-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    
+    /* Left side: Map area */
+    .map-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0; /* Allow shrinking */
+    }
+    
+    /* Right side: Tile palette */
+    .tile-area {
+      width: 280px; /* Fixed width for tile panel */
+      background: #2a2a2a;
+      border-left: 1px solid #333;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    
     /* Ultra-compact controls */
     .main-controls {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 8px;
+      padding: 8px 12px;
       background: #2a2a2a;
       border-bottom: 1px solid #333;
       flex-wrap: nowrap;
-      gap: 6px;
-      min-height: 44px;
+      gap: 8px;
+      min-height: 46px;
     }
     
     .control-group {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
       flex-wrap: nowrap;
       flex-shrink: 0;
     }
     
     button { 
-      padding: 4px 8px; 
+      padding: 6px 10px; 
       cursor: pointer; 
       border: 1px solid #444;
       background: #333;
       color: #ddd;
-      border-radius: 3px;
-      font-size: 12px;
-      height: 28px;
+      border-radius: 4px;
+      font-size: 13px;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
-      min-width: 28px;
+      min-width: 32px;
       white-space: nowrap;
+      transition: all 0.2s;
     }
     
     button:hover {
       background: #3a3a3a;
       border-color: #555;
+      transform: translateY(-1px);
     }
     
     /* File menu specific */
@@ -70,8 +96,8 @@
     .file-menu-btn {
       background: #2c5282;
       border-color: #2c5282;
-      padding: 4px 10px;
-      min-width: 60px;
+      padding: 6px 12px;
+      min-width: 70px;
     }
     
     .file-menu-btn:hover {
@@ -83,15 +109,15 @@
       display: none;
       position: absolute;
       background: #333;
-      min-width: 160px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      min-width: 180px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
       border: 1px solid #444;
-      border-radius: 3px;
+      border-radius: 4px;
       z-index: 100;
-      padding: 4px 0;
+      padding: 6px 0;
       top: 100%;
       left: 0;
-      margin-top: 2px;
+      margin-top: 4px;
     }
     
     .file-menu-content.show {
@@ -101,12 +127,12 @@
     .file-menu-item {
       display: block;
       width: 100%;
-      padding: 6px 12px;
+      padding: 8px 14px;
       text-align: left;
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 13px;
       color: #ddd;
       height: auto;
     }
@@ -118,7 +144,7 @@
     .menu-divider {
       height: 1px;
       background: #444;
-      margin: 4px 0;
+      margin: 6px 0;
     }
     
     /* Mode buttons */
@@ -126,32 +152,34 @@
       background: #2d3748; 
       color: #63b3ed;
       border-color: #4a5568;
+      box-shadow: inset 0 0 0 1px #4a5568;
     }
     
     /* Zoom controls */
     .zoom-display {
       background: #2a2a2a;
       color: #ddd;
-      padding: 0 8px;
+      padding: 0 10px;
       border: 1px solid #444;
-      border-radius: 3px;
-      min-width: 36px;
+      border-radius: 4px;
+      min-width: 40px;
       text-align: center;
-      font-size: 11px;
-      height: 28px;
+      font-size: 12px;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-family: 'Consolas', monospace;
+      font-weight: 600;
     }
     
     .zoom-btn {
-      width: 28px;
+      width: 32px;
       padding: 0;
     }
     
     .zoom-1x {
-      width: 32px;
+      width: 36px;
     }
     
     /* Map container - takes most space */
@@ -159,126 +187,185 @@
       position: relative; 
       overflow: auto; 
       flex: 1;
-      width: 100%;
       background: #222;
     }
     
     .coord-display { 
       position: absolute; 
-      top: 6px; 
-      left: 6px; 
-      background: rgba(26, 26, 26, 0.9); 
-      padding: 3px 8px; 
-      font-size: 11px; 
+      top: 8px; 
+      left: 8px; 
+      background: rgba(26, 26, 26, 0.95); 
+      padding: 4px 10px; 
+      font-size: 12px; 
       z-index: 10;
       border: 1px solid #444;
-      border-radius: 3px;
+      border-radius: 4px;
       color: #ddd;
       font-family: 'Consolas', monospace;
+      font-weight: 600;
     }
     
-    /* Status bar - very compact */
+    /* Status bar */
     .status-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 4px 8px;
+      padding: 6px 12px;
       background: #2a2a2a;
       border-top: 1px solid #333;
-      font-size: 11px;
+      font-size: 12px;
       color: #aaa;
-      height: 28px;
+      height: 34px;
       flex-shrink: 0;
     }
     
     .status-item {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
     }
     
-    /* Tile palette - ultra compact */
-    .tile-palette-section {
-      background: #2a2a2a;
-      border-top: 1px solid #333;
-      padding: 6px 8px;
-      flex-shrink: 0;
-      max-height: 120px;
+    /* TILE AREA - Right side */
+    .tile-header {
+      padding: 14px 16px;
+      background: #2c5282;
+      color: white;
+      border-bottom: 1px solid #2b6cb0;
+    }
+    
+    .tile-header h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      gap: 8px;
     }
     
-    .palette-header {
+    .tile-info {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #a0c8ff;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 4px;
-      padding: 0 2px;
     }
     
-    .palette-header h3 {
-      margin: 0;
-      color: #ddd;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    
-    .palette-info {
-      font-size: 11px;
-      color: #888;
-    }
-    
-    .tile-palette-container {
-      height: 68px;
+    /* Tile grid */
+    .tile-grid-container {
+      flex: 1;
       overflow-y: auto;
-      border: 1px solid #333;
-      border-radius: 3px;
-      padding: 4px;
-      background: #222;
+      padding: 12px;
     }
     
-    .palette { 
-      display: flex; 
-      gap: 2px; 
-      flex-wrap: wrap;
+    .tile-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
     }
     
-    .tile-swatch { 
-      position: relative; 
-    }
-    
-    .tile-checkbox { 
-      position: absolute; 
-      top: 1px; 
-      left: 1px; 
-      z-index: 2;
-      width: 10px;
-      height: 10px;
-      margin: 0;
-      padding: 0;
+    .tile-item {
+      position: relative;
+      background: #333;
+      border: 2px solid #444;
+      border-radius: 6px;
+      overflow: hidden;
       cursor: pointer;
+      transition: all 0.2s;
+      aspect-ratio: 1;
     }
     
-    .selected { border: 2px solid #e53e3e !important; }
+    .tile-item:hover {
+      border-color: #63b3ed;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    
+    .tile-item.selected {
+      border-color: #e53e3e;
+      border-width: 3px;
+      background: #3a2a2a;
+    }
+    
+    .tile-preview {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
     
     .tile-number {
       position: absolute;
-      bottom: 0;
-      right: 0;
-      background: rgba(26, 26, 26, 0.85);
+      top: 4px;
+      left: 4px;
+      background: rgba(26, 26, 26, 0.9);
       color: #ddd;
-      font-size: 7px;
-      padding: 1px 2px;
-      border-radius: 1px 0 0 0;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
       font-family: 'Consolas', monospace;
+      font-weight: 600;
+    }
+    
+    .tile-name {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(26, 26, 26, 0.9);
+      color: #ddd;
+      font-size: 10px;
+      padding: 4px;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .tile-checkbox {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      z-index: 2;
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+    }
+    
+    /* Empty state */
+    .empty-tiles {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 40px;
+      color: #666;
+      text-align: center;
+    }
+    
+    .empty-tiles .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    
+    .empty-tiles p {
+      font-size: 14px;
+      margin: 4px 0;
+    }
+    
+    .empty-tiles .hint {
+      font-size: 12px;
+      color: #888;
+      margin-top: 12px;
     }
     
     /* Tile limit warning */
     .tile-limit-warning {
+      background: #4a2a2a;
       color: #fc8181;
-      font-size: 10px;
-      margin-top: 2px;
-      padding: 0 2px;
+      font-size: 11px;
+      padding: 8px 12px;
+      border-top: 1px solid #5a3a3a;
       display: none;
     }
     
@@ -288,28 +375,27 @@
     }
     
     /* Scrollbar styling */
-    .tile-palette-container::-webkit-scrollbar {
-      width: 4px;
-      height: 4px;
+    .tile-grid-container::-webkit-scrollbar {
+      width: 6px;
     }
     
-    .tile-palette-container::-webkit-scrollbar-track {
+    .tile-grid-container::-webkit-scrollbar-track {
       background: #2a2a2a;
-      border-radius: 2px;
+      border-radius: 3px;
     }
     
-    .tile-palette-container::-webkit-scrollbar-thumb {
+    .tile-grid-container::-webkit-scrollbar-thumb {
       background: #4a5568;
-      border-radius: 2px;
+      border-radius: 3px;
     }
     
-    .tile-palette-container::-webkit-scrollbar-thumb:hover {
+    .tile-grid-container::-webkit-scrollbar-thumb:hover {
       background: #718096;
     }
     
     .map-container::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
+      width: 10px;
+      height: 10px;
     }
     
     .map-container::-webkit-scrollbar-track {
@@ -318,7 +404,7 @@
     
     .map-container::-webkit-scrollbar-thumb {
       background: #4a5568;
-      border-radius: 4px;
+      border-radius: 5px;
     }
     
     .map-container::-webkit-scrollbar-thumb:hover {
@@ -327,99 +413,127 @@
     
     /* Tool icons */
     .tool-icon {
-      font-size: 13px;
+      font-size: 14px;
       line-height: 1;
     }
     
-    /* Compact responsive */
-    @media (max-width: 900px) {
-      .main-controls {
-        flex-wrap: wrap;
-        gap: 4px;
-        min-height: auto;
-      }
-      
-      .control-group {
-        flex-wrap: wrap;
-      }
+    /* Import button */
+    .import-btn {
+      background: #2d3748;
+      border: 2px dashed #4a5568;
+      color: #a0aec0;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      margin: 12px;
+      transition: all 0.2s;
+    }
+    
+    .import-btn:hover {
+      background: #3d4758;
+      border-color: #63b3ed;
+      color: #63b3ed;
     }
   </style>
 </head>
 <body>
 
-<!-- Main Controls - Ultra Compact -->
-<div class="main-controls">
-  <!-- Left: File Menu -->
-  <div class="control-group">
-    <div class="file-menu">
-      <button class="file-menu-btn tool-icon" id="fileMenuBtn">
-        📁 File ▼
-      </button>
-      <div class="file-menu-content" id="fileMenuContent">
-        <button class="file-menu-item" id="menuImportTiles">📥 Import Tiles...</button>
-        <button class="file-menu-item" id="menuImportMap">📂 Import Map...</button>
-        <div class="menu-divider"></div>
-        <button class="file-menu-item" id="menuSaveMap">💾 Save Map as TXT</button>
-        <button class="file-menu-item" id="menuExportImage">🖼️ Export as PNG</button>
-        <div class="menu-divider"></div>
-        <button class="file-menu-item" id="menuClearMap" style="color: #fc8181;">🗑️ Clear Map</button>
+<div class="main-container">
+  <!-- Left side: Map area -->
+  <div class="map-area">
+    <!-- Main Controls -->
+    <div class="main-controls">
+      <!-- Left: File Menu -->
+      <div class="control-group">
+        <div class="file-menu">
+          <button class="file-menu-btn tool-icon" id="fileMenuBtn">
+            📁 File ▼
+          </button>
+          <div class="file-menu-content" id="fileMenuContent">
+            <button class="file-menu-item" id="menuImportTiles">📥 Import Tiles...</button>
+            <button class="file-menu-item" id="menuImportMap">📂 Import Map...</button>
+            <div class="menu-divider"></div>
+            <button class="file-menu-item" id="menuSaveMap">💾 Save Map as TXT</button>
+            <button class="file-menu-item" id="menuExportImage">🖼️ Export as PNG</button>
+            <div class="menu-divider"></div>
+            <button class="file-menu-item" id="menuClearMap" style="color: #fc8181;">🗑️ Clear Map</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Center: Mode Buttons -->
+      <div class="control-group">
+        <button id="modePlace" class="active tool-icon">🖌️ Place</button>
+        <button id="modeSelect" class="tool-icon">🔲 Select</button>
+        <button id="clearSelectedAreaBtn" class="tool-icon">🗑️ Area</button>
+        <button id="deselectAllBtn" class="tool-icon">✖️ Deselect</button>
+      </div>
+      
+      <!-- Right: Zoom Controls -->
+      <div class="control-group">
+        <button id="fitMapBtn" class="tool-icon zoom-btn">📐</button>
+        <button id="zoomOutBtn" class="tool-icon zoom-btn">➖</button>
+        <div class="zoom-display" id="zoomLevel">Fit</div>
+        <button id="zoomInBtn" class="tool-icon zoom-btn">➕</button>
+        <button id="zoom1xBtn" class="tool-icon zoom-1x">1x</button>
+      </div>
+    </div>
+
+    <!-- Hidden file inputs -->
+    <input type="file" id="importTileForMap" accept="image/png" multiple class="file-input-hidden"/>
+    <input type="file" id="importMapTXT" accept=".txt" class="file-input-hidden"/>
+
+    <!-- Map Container -->
+    <div class="map-container" id="mapContainer">
+      <div class="coord-display" id="coordDisplay">X:0 Y:0</div>
+      <canvas id="mapEditor"></canvas>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-item">
+        <span id="mapInfo">Map: 50×50</span>
+      </div>
+      <div class="status-item">
+        <span id="viewInfo">View: Fit</span>
+      </div>
+      <div class="status-item">
+        <span id="selectedInfo">Selected: 0</span>
+      </div>
+      <div class="status-item">
+        <span id="tileCountInfo">Tiles: 0/2000</span>
       </div>
     </div>
   </div>
-  
-  <!-- Center: Mode Buttons -->
-  <div class="control-group">
-    <button id="modePlace" class="active tool-icon">🖌️ Place</button>
-    <button id="modeSelect" class="tool-icon">🔲 Select</button>
-    <button id="clearSelectedAreaBtn" class="tool-icon">🗑️ Area</button>
-    <button id="deselectAllBtn" class="tool-icon">✖️ Deselect</button>
-  </div>
-  
-  <!-- Right: Zoom Controls -->
-  <div class="control-group">
-    <button id="fitMapBtn" class="tool-icon zoom-btn">📐</button>
-    <button id="zoomOutBtn" class="tool-icon zoom-btn">➖</button>
-    <div class="zoom-display" id="zoomLevel">Fit</div>
-    <button id="zoomInBtn" class="tool-icon zoom-btn">➕</button>
-    <button id="zoom1xBtn" class="tool-icon zoom-1x">1x</button>
-  </div>
-</div>
 
-<!-- Hidden file inputs -->
-<input type="file" id="importTileForMap" accept="image/png" multiple class="file-input-hidden"/>
-<input type="file" id="importMapTXT" accept=".txt" class="file-input-hidden"/>
-
-<!-- MAP EDITOR AREA - Maximized space -->
-<div class="map-container" id="mapContainer">
-  <div class="coord-display" id="coordDisplay">X:0 Y:0</div>
-  <canvas id="mapEditor"></canvas>
-</div>
-
-<!-- Status Bar -->
-<div class="status-bar">
-  <div class="status-item">
-    <span id="mapInfo">Map: 50×50</span>
-  </div>
-  <div class="status-item">
-    <span id="viewInfo">View: Fit</span>
-  </div>
-  <div class="status-item">
-    <span id="selectedInfo">Selected: 0</span>
-  </div>
-  <div class="status-item">
-    <span id="tileCountInfo">Tiles: 0/2000</span>
-  </div>
-</div>
-
-<!-- Compact Tile Palette -->
-<div class="tile-palette-section">
-  <div class="palette-header">
-    <h3>🎨 Tiles</h3>
-    <span id="tileInfo" class="palette-info">No tiles</span>
-  </div>
-  <div class="tile-limit-warning" id="tileLimitWarning">Limit: 2000 tiles</div>
-  <div class="tile-palette-container">
-    <div class="palette" id="tilePalette"></div>
+  <!-- Right side: Tile palette -->
+  <div class="tile-area">
+    <div class="tile-header">
+      <h2>🎨 Tile Palette</h2>
+      <div class="tile-info">
+        <span id="tileInfo">No tiles imported</span>
+        <span id="tileStats">0 tiles</span>
+      </div>
+    </div>
+    
+    <div class="import-btn" id="importTilesBtn">
+      📥 Click to Import Tiles
+    </div>
+    
+    <div class="tile-grid-container" id="tileGridContainer">
+      <div class="empty-tiles" id="emptyTiles">
+        <div class="icon">🎨</div>
+        <p>No tiles imported yet</p>
+        <p>Import PNG files to get started</p>
+        <div class="hint">Supports 000-1999 numbered tiles</div>
+      </div>
+      <div class="tile-grid" id="tileGrid"></div>
+    </div>
+    
+    <div class="tile-limit-warning" id="tileLimitWarning">
+      ⚠️ Tile limit: 2000 (000-1999)
+    </div>
   </div>
 </div>
 
@@ -612,64 +726,65 @@ function sortTileLibrary() {
 // Update tile count display
 function updateTileCount() {
   $('#tileCountInfo').text(`Tiles: ${tileLibrary.length}/2000`);
+  $('#tileStats').text(`${tileLibrary.length} tiles`);
   
   const warning = $('#tileLimitWarning');
   if (tileLibrary.length >= MAX_TILES * 0.9) {
-    warning.show().css('color', '#fc8181');
-    warning.text(`Limit: ${tileLibrary.length}/2000`);
+    warning.show().css('background', '#5a2a2a');
+    warning.text(`⚠️ Warning: ${tileLibrary.length}/2000 tiles`);
   } else if (tileLibrary.length >= MAX_TILES * 0.7) {
-    warning.show().css('color', '#f6ad55');
-    warning.text(`${tileLibrary.length}/2000`);
+    warning.show().css('background', '#4a3a2a');
+    warning.text(`${tileLibrary.length}/2000 tiles`);
   } else {
     warning.hide();
   }
 }
 
-function updateTilePalette() {
-  const tilePaletteDiv = $('#tilePalette');
-  tilePaletteDiv.empty();
+// Update tile grid display
+function updateTileGrid() {
+  const tileGrid = $('#tileGrid');
+  const emptyTiles = $('#emptyTiles');
+  tileGrid.empty();
   
   if (tileLibrary.length === 0) {
-    tilePaletteDiv.html('<div style="color: #666; text-align: center; padding: 10px; font-size: 11px;">Import tiles to begin</div>');
+    emptyTiles.show();
+    $('#tileInfo').text('No tiles imported');
     return;
   }
+  
+  emptyTiles.hide();
   
   // Sort tiles before displaying
   sortTileLibrary();
   
   tileLibrary.forEach((tile, idx) => {
-    const container = $('<div>').css({
-      position: 'relative',
-      display: 'inline-block',
-      margin: '1px'
-    });
+    const tileItem = $('<div>').addClass('tile-item');
     
-    const canvas = $('<canvas>').attr({ width: 22, height: 22 });
-    const ctx = canvas[0].getContext('2d');
-    
-    // Draw tile preview
-    ctx.drawImage(tile.canvas, 0, 0, 22, 22);
-    
-    // Add border if selected
+    // Add selected class if this tile is selected
     if (selectedTileIndices.has(idx)) {
-      ctx.strokeStyle = '#e53e3e';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(0, 0, 22, 22);
-    } else if (idx === selectedTileIndex) {
-      ctx.strokeStyle = '#63b3ed';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(0, 0, 22, 22);
+      tileItem.addClass('selected');
     }
     
-    canvas.addClass('tile-swatch');
-    
-    // Extract and display tile number
+    // Extract tile number
     const tileNumber = extractTileNumber(tile.name);
     const displayNumber = tileNumber.toString().padStart(3, '0');
-    canvas.attr('title', `${displayNumber}: ${tile.name}`);
+    
+    // Create preview canvas
+    const previewCanvas = $('<canvas>').addClass('tile-preview');
+    const ctx = previewCanvas[0].getContext('2d');
+    previewCanvas[0].width = 64;
+    previewCanvas[0].height = 64;
+    
+    // Draw tile preview (scaled up for visibility)
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(tile.canvas, 0, 0, 64, 64);
     
     // Add tile number overlay
     const numberOverlay = $('<div>').addClass('tile-number').text(displayNumber);
+    
+    // Add tile name (truncated)
+    const name = tile.name.length > 12 ? tile.name.substring(0, 10) + '...' : tile.name;
+    const nameOverlay = $('<div>').addClass('tile-name').text(name);
     
     // Add checkbox for multiple selection
     const checkbox = $('<input>').attr({
@@ -687,10 +802,10 @@ function updateTilePalette() {
       if (selectedTileIndices.size > 0) {
         selectedTileIndex = Array.from(selectedTileIndices)[0];
       }
-      updateTilePalette();
+      updateTileGrid();
     });
     
-    container.on('click', function(e) {
+    tileItem.on('click', function(e) {
       if (e.shiftKey) {
         if (selectedTileIndices.has(idx)) {
           selectedTileIndices.delete(idx);
@@ -705,22 +820,16 @@ function updateTilePalette() {
         selectedTileIndices.clear();
         selectedTileIndices.add(idx);
       }
-      updateTilePalette();
+      updateTileGrid();
       updateSelectedInfo();
     });
     
-    container.append(canvas, checkbox, numberOverlay);
-    tilePaletteDiv.append(container);
+    tileItem.append(previewCanvas, numberOverlay, nameOverlay, checkbox);
+    tileGrid.append(tileItem);
   });
   
   // Update info display
-  const tileInfo = $('#tileInfo');
-  if (tileLibrary.length === 0) {
-    tileInfo.text('No tiles');
-  } else {
-    tileInfo.text(`${tileLibrary.length} tiles`);
-  }
-  
+  $('#tileInfo').text(`${tileLibrary.length} tiles loaded`);
   updateTileCount();
   updateSelectedInfo();
 }
@@ -783,6 +892,11 @@ function initEventListeners() {
     }
   });
   
+  // Import tiles button
+  $('#importTilesBtn').on('click', function() {
+    $('#importTileForMap').click();
+  });
+  
   // Deselect All button
   $('#deselectAllBtn').on('click', function() {
     selectedTileIndices.clear();
@@ -790,7 +904,7 @@ function initEventListeners() {
       selectedTileIndex = 0;
       selectedTileIndices.add(0);
     }
-    updateTilePalette();
+    updateTileGrid();
   });
   
   // Map Editor Event Listeners
@@ -923,8 +1037,7 @@ function initEventListeners() {
             selectedTileIndex = tileLibrary.length - files.length;
             selectedTileIndices.add(selectedTileIndex);
             
-            sortTileLibrary();
-            updateTilePalette();
+            updateTileGrid();
             drawMap();
             alert(`Added ${files.length} tile(s). Total: ${tileLibrary.length}/${MAX_TILES}`);
           }
@@ -1113,6 +1226,7 @@ function initApp() {
   updateViewInfo();
   updateSelectedInfo();
   updateTileCount();
+  updateTileGrid();
 }
 
 // Start the app when page loads
