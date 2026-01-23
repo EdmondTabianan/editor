@@ -6,245 +6,92 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
       height: 100vh; 
-      font-family: sans-serif; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
       overflow: hidden;
-      background: #2c3e50;
+      background: #1a1a1a;
       display: flex;
       flex-direction: column;
     }
     
     canvas { 
-      border: 1px solid #555; 
+      border: 1px solid #444; 
       image-rendering: pixelated; 
       cursor: crosshair; 
-      background: #34495e;
+      background: #222;
     }
     
-    .container { 
-      display: flex; 
-      flex-direction: column; 
-      width: 100%;
-      margin-bottom: 8px;
+    /* Ultra-compact controls */
+    .main-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 8px;
+      background: #2a2a2a;
+      border-bottom: 1px solid #333;
+      flex-wrap: nowrap;
+      gap: 6px;
+      min-height: 44px;
     }
     
-    .palette { 
-      display: flex; 
-      gap: 4px; 
-      margin-top: 8px; 
-      flex-wrap: wrap;
-      max-height: 80px;
-      overflow-y: auto;
-    }
-    
-    .tile-swatch { 
-      position: relative; 
-      margin: 2px;
-    }
-    
-    .tile-checkbox { 
-      position: absolute; 
-      top: 1px; 
-      left: 1px; 
-      z-index: 2;
-      width: 12px;
-      height: 12px;
-    }
-    
-    .selected { border: 2px solid #f00; }
-    
-    button, input { 
-      margin-top: 6px; 
-      padding: 5px 8px; 
-      cursor: pointer; 
-      border: 1px solid #555;
-      background: #34495e;
-      color: white;
-      border-radius: 3px;
-      font-size: 0.85em;
-    }
-    
-    button:hover, input:hover {
-      background: #3d566e;
-    }
-    
-    .tool-panel { 
-      display: flex; 
-      gap: 6px; 
-      align-items: center; 
-      margin-top: 8px; 
-      flex-wrap: wrap;
-      width: 100%;
-    }
-    
-    h2 { 
-      margin-bottom: 6px; 
-      color: #ecf0f1;
-      font-size: 1.2em;
-    }
-    
-    .mode-buttons { 
-      display: flex; 
+    .control-group {
+      display: flex;
+      align-items: center;
       gap: 4px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      flex-shrink: 0;
     }
     
-    .mode-buttons button.active { 
-      background: #27ae60; 
-      color: white; 
-      border-color: #219653;
-    }
-    
-    .file-input-container { 
-      display: flex; 
-      flex-direction: column;
-      width: 100%;
-      max-width: 180px;
-    }
-    
-    .file-input-container label { 
-      margin-bottom: 2px; 
-      font-weight: bold;
-      font-size: 0.8em;
-      color: #bdc3c7;
-    }
-    
-    .zoom-controls { 
-      display: flex; 
-      gap: 4px; 
-      align-items: center; 
-      margin-left: auto;
-    }
-    
-    .map-container { 
-      position: relative; 
-      overflow: auto; 
-      border: 1px solid #555; 
-      flex: 1;
-      width: 100%;
-      margin-top: 8px;
-      background: #34495e;
-      border-radius: 4px;
-    }
-    
-    .coord-display { 
-      position: absolute; 
-      top: 4px; 
-      left: 4px; 
-      background: rgba(44, 62, 80, 0.95); 
-      padding: 3px 6px; 
-      font-size: 10px; 
-      z-index: 10;
-      border: 1px solid #555;
-      border-radius: 2px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
-      color: #ecf0f1;
-    }
-    
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      margin-bottom: 6px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid #3d566e;
-    }
-    
-    .zoom-display {
-      background: #34495e;
-      color: white;
-      padding: 2px 5px;
-      border: 1px solid #555;
-      border-radius: 2px;
-      min-width: 45px;
-      text-align: center;
-      font-size: 0.85em;
-    }
-    
-    .tile-palette-container {
-      height: 100px; /* Reduced height */
-      overflow-y: auto;
-      border: 1px solid #3d566e;
+    button { 
+      padding: 4px 8px; 
+      cursor: pointer; 
+      border: 1px solid #444;
+      background: #333;
+      color: #ddd;
       border-radius: 3px;
-      padding: 6px;
-      background: #2c3e50;
-      margin-top: 6px;
-    }
-    
-    .map-controls {
-      background: #34495e;
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid #3d566e;
-      margin-bottom: 6px;
-    }
-    
-    .fit-button {
-      background: #3498db;
-      color: white;
-      border-color: #2980b9;
-    }
-    
-    .fit-button:hover {
-      background: #2980b9;
-    }
-    
-    .status-bar {
+      font-size: 12px;
+      height: 28px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 4px 8px;
-      background: #34495e;
-      border-top: 1px solid #3d566e;
-      font-size: 0.8em;
-      color: #bdc3c7;
+      justify-content: center;
+      min-width: 28px;
+      white-space: nowrap;
     }
     
-    /* Main layout */
-    .main-content {
-      flex: 1;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      background: #2c3e50;
-      overflow: hidden;
+    button:hover {
+      background: #3a3a3a;
+      border-color: #555;
     }
     
-    /* File Menu Styles */
+    /* File menu specific */
     .file-menu {
       position: relative;
-      display: inline-block;
     }
     
     .file-menu-btn {
-      background: #3498db;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 0.85em;
-      display: flex;
-      align-items: center;
-      gap: 5px;
+      background: #2c5282;
+      border-color: #2c5282;
+      padding: 4px 10px;
+      min-width: 60px;
     }
     
     .file-menu-btn:hover {
-      background: #2980b9;
+      background: #2b6cb0;
+      border-color: #2b6cb0;
     }
     
     .file-menu-content {
       display: none;
       position: absolute;
-      background-color: #34495e;
-      min-width: 200px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-      border: 1px solid #3d566e;
+      background: #333;
+      min-width: 160px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      border: 1px solid #444;
       border-radius: 3px;
       z-index: 100;
-      padding: 5px 0;
+      padding: 4px 0;
       top: 100%;
       left: 0;
+      margin-top: 2px;
     }
     
     .file-menu-content.show {
@@ -254,170 +101,325 @@
     .file-menu-item {
       display: block;
       width: 100%;
-      padding: 8px 12px;
+      padding: 6px 12px;
       text-align: left;
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 0.85em;
-      color: #ecf0f1;
+      font-size: 12px;
+      color: #ddd;
+      height: auto;
     }
     
     .file-menu-item:hover {
-      background-color: #3d566e;
+      background: #3a3a3a;
     }
     
     .menu-divider {
       height: 1px;
-      background: #3d566e;
-      margin: 5px 0;
+      background: #444;
+      margin: 4px 0;
     }
     
-    .file-input-hidden {
-      display: none;
+    /* Mode buttons */
+    .mode-buttons button.active { 
+      background: #2d3748; 
+      color: #63b3ed;
+      border-color: #4a5568;
     }
     
-    /* Tile numbering */
+    /* Zoom controls */
+    .zoom-display {
+      background: #2a2a2a;
+      color: #ddd;
+      padding: 0 8px;
+      border: 1px solid #444;
+      border-radius: 3px;
+      min-width: 36px;
+      text-align: center;
+      font-size: 11px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Consolas', monospace;
+    }
+    
+    .zoom-btn {
+      width: 28px;
+      padding: 0;
+    }
+    
+    .zoom-1x {
+      width: 32px;
+    }
+    
+    /* Map container - takes most space */
+    .map-container { 
+      position: relative; 
+      overflow: auto; 
+      flex: 1;
+      width: 100%;
+      background: #222;
+    }
+    
+    .coord-display { 
+      position: absolute; 
+      top: 6px; 
+      left: 6px; 
+      background: rgba(26, 26, 26, 0.9); 
+      padding: 3px 8px; 
+      font-size: 11px; 
+      z-index: 10;
+      border: 1px solid #444;
+      border-radius: 3px;
+      color: #ddd;
+      font-family: 'Consolas', monospace;
+    }
+    
+    /* Status bar - very compact */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 8px;
+      background: #2a2a2a;
+      border-top: 1px solid #333;
+      font-size: 11px;
+      color: #aaa;
+      height: 28px;
+      flex-shrink: 0;
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    /* Tile palette - ultra compact */
+    .tile-palette-section {
+      background: #2a2a2a;
+      border-top: 1px solid #333;
+      padding: 6px 8px;
+      flex-shrink: 0;
+      max-height: 120px;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .palette-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      padding: 0 2px;
+    }
+    
+    .palette-header h3 {
+      margin: 0;
+      color: #ddd;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .palette-info {
+      font-size: 11px;
+      color: #888;
+    }
+    
+    .tile-palette-container {
+      height: 68px;
+      overflow-y: auto;
+      border: 1px solid #333;
+      border-radius: 3px;
+      padding: 4px;
+      background: #222;
+    }
+    
+    .palette { 
+      display: flex; 
+      gap: 2px; 
+      flex-wrap: wrap;
+    }
+    
+    .tile-swatch { 
+      position: relative; 
+    }
+    
+    .tile-checkbox { 
+      position: absolute; 
+      top: 1px; 
+      left: 1px; 
+      z-index: 2;
+      width: 10px;
+      height: 10px;
+      margin: 0;
+      padding: 0;
+      cursor: pointer;
+    }
+    
+    .selected { border: 2px solid #e53e3e !important; }
+    
     .tile-number {
       position: absolute;
       bottom: 0;
       right: 0;
-      background: rgba(44, 62, 80, 0.8);
-      color: white;
-      font-size: 8px;
-      padding: 1px 3px;
-      border-radius: 2px 0 0 0;
-    }
-    
-    /* Maximize map space */
-    .controls-compact {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    
-    .top-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    
-    .quick-actions {
-      display: flex;
-      gap: 5px;
-    }
-    
-    /* Scrollbar styling */
-    .tile-palette-container::-webkit-scrollbar,
-    .map-container::-webkit-scrollbar {
-      width: 6px;
-    }
-    
-    .tile-palette-container::-webkit-scrollbar-track,
-    .map-container::-webkit-scrollbar-track {
-      background: #2c3e50;
-      border-radius: 3px;
-    }
-    
-    .tile-palette-container::-webkit-scrollbar-thumb,
-    .map-container::-webkit-scrollbar-thumb {
-      background: #4a6583;
-      border-radius: 3px;
-    }
-    
-    .tile-palette-container::-webkit-scrollbar-thumb:hover,
-    .map-container::-webkit-scrollbar-thumb:hover {
-      background: #5d7fa3;
+      background: rgba(26, 26, 26, 0.85);
+      color: #ddd;
+      font-size: 7px;
+      padding: 1px 2px;
+      border-radius: 1px 0 0 0;
+      font-family: 'Consolas', monospace;
     }
     
     /* Tile limit warning */
     .tile-limit-warning {
-      color: #e74c3c;
-      font-size: 0.8em;
-      margin-top: 5px;
+      color: #fc8181;
+      font-size: 10px;
+      margin-top: 2px;
+      padding: 0 2px;
       display: none;
+    }
+    
+    /* File inputs */
+    .file-input-hidden {
+      display: none;
+    }
+    
+    /* Scrollbar styling */
+    .tile-palette-container::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    
+    .tile-palette-container::-webkit-scrollbar-track {
+      background: #2a2a2a;
+      border-radius: 2px;
+    }
+    
+    .tile-palette-container::-webkit-scrollbar-thumb {
+      background: #4a5568;
+      border-radius: 2px;
+    }
+    
+    .tile-palette-container::-webkit-scrollbar-thumb:hover {
+      background: #718096;
+    }
+    
+    .map-container::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    .map-container::-webkit-scrollbar-track {
+      background: #2a2a2a;
+    }
+    
+    .map-container::-webkit-scrollbar-thumb {
+      background: #4a5568;
+      border-radius: 4px;
+    }
+    
+    .map-container::-webkit-scrollbar-thumb:hover {
+      background: #718096;
+    }
+    
+    /* Tool icons */
+    .tool-icon {
+      font-size: 13px;
+      line-height: 1;
+    }
+    
+    /* Compact responsive */
+    @media (max-width: 900px) {
+      .main-controls {
+        flex-wrap: wrap;
+        gap: 4px;
+        min-height: auto;
+      }
+      
+      .control-group {
+        flex-wrap: wrap;
+      }
     }
   </style>
 </head>
 <body>
 
-<div class="main-content">
-  <div class="controls-compact">
-    <div class="top-controls">
-      <div class="section-header" style="border: none; padding: 0; margin: 0;">
-        <h2>🗺️ Map Editor</h2>
-        <span style="color: #bdc3c7; font-size: 0.85em;">50x50 tiles</span>
-      </div>
-      
-      <!-- File Menu -->
-      <div class="file-menu">
-        <button class="file-menu-btn" id="fileMenuBtn">
-          📁 File
-          <span style="font-size: 0.7em;">▼</span>
-        </button>
-        <div class="file-menu-content" id="fileMenuContent">
-          <button class="file-menu-item" id="menuImportTiles">📥 Import Tiles...</button>
-          <button class="file-menu-item" id="menuImportMap">📂 Import Map...</button>
-          <div class="menu-divider"></div>
-          <button class="file-menu-item" id="menuSaveMap">💾 Save Map as TXT</button>
-          <button class="file-menu-item" id="menuExportImage">🖼️ Export as PNG</button>
-          <div class="menu-divider"></div>
-          <button class="file-menu-item" id="menuClearMap" style="color: #e74c3c;">🗑️ Clear Map</button>
-        </div>
-      </div>
-    </div>
-    
-    <div class="map-controls">
-      <div class="tool-panel">
-        <!-- Mode buttons -->
-        <div class="mode-buttons">
-          <button id="modePlace" class="active">🖌️ Place</button>
-          <button id="modeSelect">🔲 Select</button>
-          <button id="clearSelectedAreaBtn">🗑️ Clear Area</button>
-          <button id="deselectAllBtn">✖️ Deselect All</button>
-        </div>
-        
-        <!-- Zoom controls -->
-        <div class="zoom-controls">
-          <button id="fitMapBtn" class="fit-button">📐 Fit</button>
-          <button id="zoomOutBtn">➖</button>
-          <div class="zoom-display" id="zoomLevel">Fit</div>
-          <button id="zoomInBtn">➕</button>
-          <button id="zoom1xBtn">1x</button>
-        </div>
+<!-- Main Controls - Ultra Compact -->
+<div class="main-controls">
+  <!-- Left: File Menu -->
+  <div class="control-group">
+    <div class="file-menu">
+      <button class="file-menu-btn tool-icon" id="fileMenuBtn">
+        📁 File ▼
+      </button>
+      <div class="file-menu-content" id="fileMenuContent">
+        <button class="file-menu-item" id="menuImportTiles">📥 Import Tiles...</button>
+        <button class="file-menu-item" id="menuImportMap">📂 Import Map...</button>
+        <div class="menu-divider"></div>
+        <button class="file-menu-item" id="menuSaveMap">💾 Save Map as TXT</button>
+        <button class="file-menu-item" id="menuExportImage">🖼️ Export as PNG</button>
+        <div class="menu-divider"></div>
+        <button class="file-menu-item" id="menuClearMap" style="color: #fc8181;">🗑️ Clear Map</button>
       </div>
     </div>
   </div>
   
-  <!-- Hidden file inputs -->
-  <input type="file" id="importTileForMap" accept="image/png" multiple class="file-input-hidden"/>
-  <input type="file" id="importMapTXT" accept=".txt" class="file-input-hidden"/>
-  
-  <!-- MAP EDITOR AREA - Maximized space -->
-  <div class="map-container" id="mapContainer">
-    <div class="coord-display" id="coordDisplay">X: 0, Y: 0</div>
-    <canvas id="mapEditor"></canvas>
+  <!-- Center: Mode Buttons -->
+  <div class="control-group">
+    <button id="modePlace" class="active tool-icon">🖌️ Place</button>
+    <button id="modeSelect" class="tool-icon">🔲 Select</button>
+    <button id="clearSelectedAreaBtn" class="tool-icon">🗑️ Area</button>
+    <button id="deselectAllBtn" class="tool-icon">✖️ Deselect</button>
   </div>
   
-  <div class="status-bar">
-    <span id="mapInfo">Map: 50x50 tiles</span>
-    <span id="viewInfo">View: Fit to screen</span>
-    <span id="selectedInfo">Selected: 0 tiles</span>
+  <!-- Right: Zoom Controls -->
+  <div class="control-group">
+    <button id="fitMapBtn" class="tool-icon zoom-btn">📐</button>
+    <button id="zoomOutBtn" class="tool-icon zoom-btn">➖</button>
+    <div class="zoom-display" id="zoomLevel">Fit</div>
+    <button id="zoomInBtn" class="tool-icon zoom-btn">➕</button>
+    <button id="zoom1xBtn" class="tool-icon zoom-1x">1x</button>
+  </div>
+</div>
+
+<!-- Hidden file inputs -->
+<input type="file" id="importTileForMap" accept="image/png" multiple class="file-input-hidden"/>
+<input type="file" id="importMapTXT" accept=".txt" class="file-input-hidden"/>
+
+<!-- MAP EDITOR AREA - Maximized space -->
+<div class="map-container" id="mapContainer">
+  <div class="coord-display" id="coordDisplay">X:0 Y:0</div>
+  <canvas id="mapEditor"></canvas>
+</div>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-item">
+    <span id="mapInfo">Map: 50×50</span>
+  </div>
+  <div class="status-item">
+    <span id="viewInfo">View: Fit</span>
+  </div>
+  <div class="status-item">
+    <span id="selectedInfo">Selected: 0</span>
+  </div>
+  <div class="status-item">
     <span id="tileCountInfo">Tiles: 0/2000</span>
   </div>
-  
-  <!-- Compact tile palette -->
-  <div style="margin-top: 5px;">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h3 style="margin: 0; font-size: 1em; color: #ecf0f1;">🎨 Tile Palette</h3>
-      <span id="tileInfo" style="font-size: 0.8em; color: #bdc3c7;">No tiles imported</span>
-    </div>
-    <div class="tile-limit-warning" id="tileLimitWarning">Tile limit: 2000 (000-1999)</div>
-    <div class="tile-palette-container">
-      <div class="palette" id="tilePalette"></div>
-    </div>
+</div>
+
+<!-- Compact Tile Palette -->
+<div class="tile-palette-section">
+  <div class="palette-header">
+    <h3>🎨 Tiles</h3>
+    <span id="tileInfo" class="palette-info">No tiles</span>
+  </div>
+  <div class="tile-limit-warning" id="tileLimitWarning">Limit: 2000 tiles</div>
+  <div class="tile-palette-container">
+    <div class="palette" id="tilePalette"></div>
   </div>
 </div>
 
@@ -471,8 +473,8 @@ const mapContainer = document.getElementById('mapContainer');
 // Calculate fit-to-screen zoom level
 function calculateFitZoom() {
   const container = mapContainer;
-  const containerWidth = container.clientWidth - 20;
-  const containerHeight = container.clientHeight - 20;
+  const containerWidth = container.clientWidth - 4;
+  const containerHeight = container.clientHeight - 4;
   
   const maxWidthZoom = Math.floor(containerWidth / (MapCols * OriginalTileSize));
   const maxHeightZoom = Math.floor(containerHeight / (MapRows * OriginalTileSize));
@@ -511,7 +513,7 @@ function updateViewInfo() {
   const viewInfo = $('#viewInfo');
   if (isFitToScreen) {
     const fitZoom = calculateFitZoom();
-    viewInfo.text(`View: Fit (${fitZoom}x)`);
+    viewInfo.text(`View: ${fitZoom}x`);
   } else {
     viewInfo.text(`View: ${TileScale}x`);
   }
@@ -524,12 +526,12 @@ function drawMap() {
   const effectiveTileScale = isFitToScreen && TileScale === 0 ? calculateFitZoom() : TileScale;
   
   // Clear map
-  mapEditorCtx.fillStyle = '#2c3e50';
+  mapEditorCtx.fillStyle = '#222';
   mapEditorCtx.fillRect(0, 0, mapEditorCanvas.width, mapEditorCanvas.height);
   
   // Draw grid (only if zoom is at least 2x)
   if (effectiveTileScale >= 2) {
-    mapEditorCtx.strokeStyle = '#3d566e';
+    mapEditorCtx.strokeStyle = '#333';
     mapEditorCtx.lineWidth = 1;
     
     for (let y = 0; y <= MapRows; y++) {
@@ -572,7 +574,7 @@ function drawMap() {
     const x2 = Math.max(selectionRect.startX, selectionRect.endX);
     const y2 = Math.max(selectionRect.startY, selectionRect.endY);
     
-    mapEditorCtx.strokeStyle = '#3498db';
+    mapEditorCtx.strokeStyle = '#63b3ed';
     mapEditorCtx.lineWidth = 2;
     mapEditorCtx.setLineDash([5, 3]);
     mapEditorCtx.strokeRect(
@@ -585,26 +587,18 @@ function drawMap() {
   }
 }
 
-// Extract number from filename for sorting (supports formats like 000, 001, 042, etc.)
+// Extract number from filename for sorting
 function extractTileNumber(filename) {
-  // Remove extension and try to extract numbers
   const nameWithoutExt = filename.replace('.png', '').replace('.PNG', '');
-  
-  // Try to find numbers in the filename
   const match = nameWithoutExt.match(/\d+/);
   if (match) {
     const num = parseInt(match[0]);
-    // Ensure it's within valid range (0-1999)
     return Math.min(Math.max(num, 0), 1999);
   }
-  
-  // If no numbers found, try to parse the whole string as number
   const parsed = parseInt(nameWithoutExt);
   if (!isNaN(parsed)) {
     return Math.min(Math.max(parsed, 0), 1999);
   }
-  
-  // Default to 0 if no number found
   return 0;
 }
 
@@ -617,18 +611,15 @@ function sortTileLibrary() {
 
 // Update tile count display
 function updateTileCount() {
-  $('#tileCountInfo').text(`Tiles: ${tileLibrary.length}/${MAX_TILES}`);
+  $('#tileCountInfo').text(`Tiles: ${tileLibrary.length}/2000`);
   
-  // Show warning if approaching limit
   const warning = $('#tileLimitWarning');
   if (tileLibrary.length >= MAX_TILES * 0.9) {
-    warning.show();
-    warning.css('color', '#e74c3c');
-    warning.text(`Warning: ${tileLibrary.length}/${MAX_TILES} tiles (limit: 000-1999)`);
+    warning.show().css('color', '#fc8181');
+    warning.text(`Limit: ${tileLibrary.length}/2000`);
   } else if (tileLibrary.length >= MAX_TILES * 0.7) {
-    warning.show();
-    warning.css('color', '#f39c12');
-    warning.text(`${tileLibrary.length}/${MAX_TILES} tiles (limit: 000-1999)`);
+    warning.show().css('color', '#f6ad55');
+    warning.text(`${tileLibrary.length}/2000`);
   } else {
     warning.hide();
   }
@@ -639,7 +630,7 @@ function updateTilePalette() {
   tilePaletteDiv.empty();
   
   if (tileLibrary.length === 0) {
-    tilePaletteDiv.html('<div style="color: #7f8c8d; text-align: center; padding: 15px; font-style: italic;">Import tiles to see them here</div>');
+    tilePaletteDiv.html('<div style="color: #666; text-align: center; padding: 10px; font-size: 11px;">Import tiles to begin</div>');
     return;
   }
   
@@ -650,24 +641,24 @@ function updateTilePalette() {
     const container = $('<div>').css({
       position: 'relative',
       display: 'inline-block',
-      margin: '2px'
+      margin: '1px'
     });
     
-    const canvas = $('<canvas>').attr({ width: 24, height: 24 });
+    const canvas = $('<canvas>').attr({ width: 22, height: 22 });
     const ctx = canvas[0].getContext('2d');
     
     // Draw tile preview
-    ctx.drawImage(tile.canvas, 0, 0, 24, 24);
+    ctx.drawImage(tile.canvas, 0, 0, 22, 22);
     
     // Add border if selected
     if (selectedTileIndices.has(idx)) {
-      ctx.strokeStyle = '#e74c3c';
+      ctx.strokeStyle = '#e53e3e';
       ctx.lineWidth = 2;
-      ctx.strokeRect(0, 0, 24, 24);
+      ctx.strokeRect(0, 0, 22, 22);
     } else if (idx === selectedTileIndex) {
-      ctx.strokeStyle = '#3498db';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(0, 0, 24, 24);
+      ctx.strokeStyle = '#63b3ed';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0, 0, 22, 22);
     }
     
     canvas.addClass('tile-swatch');
@@ -725,9 +716,9 @@ function updateTilePalette() {
   // Update info display
   const tileInfo = $('#tileInfo');
   if (tileLibrary.length === 0) {
-    tileInfo.text('No tiles imported');
+    tileInfo.text('No tiles');
   } else {
-    tileInfo.text(`${tileLibrary.length} tiles (sorted 000-${(tileLibrary.length-1).toString().padStart(3, '0')})`);
+    tileInfo.text(`${tileLibrary.length} tiles`);
   }
   
   updateTileCount();
@@ -745,7 +736,7 @@ function updateZoomDisplay() {
 
 function updateSelectedInfo() {
   const selectedInfo = $('#selectedInfo');
-  selectedInfo.text(`Selected: ${selectedTileIndices.size} tile${selectedTileIndices.size !== 1 ? 's' : ''}`);
+  selectedInfo.text(`Selected: ${selectedTileIndices.size}`);
 }
 
 // === Event Listeners ===
@@ -756,12 +747,10 @@ function initEventListeners() {
     $('#fileMenuContent').toggleClass('show');
   });
   
-  // Close menu when clicking elsewhere
   $(document).on('click', function() {
     $('#fileMenuContent').removeClass('show');
   });
   
-  // Prevent menu from closing when clicking inside it
   $('#fileMenuContent').on('click', function(e) {
     e.stopPropagation();
   });
@@ -808,7 +797,7 @@ function initEventListeners() {
   let isDragging = false;
 
   function updateCoordDisplay(x, y) {
-    $('#coordDisplay').text(`X: ${x}, Y: ${y}`);
+    $('#coordDisplay').text(`X:${x} Y:${y}`);
   }
 
   function getMapCoordinates(e) {
@@ -902,7 +891,6 @@ function initEventListeners() {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
     
-    // Check if adding these files would exceed the limit
     if (tileLibrary.length + files.length > MAX_TILES) {
       alert(`Cannot import ${files.length} tiles. Maximum limit is ${MAX_TILES} tiles (000-1999).\nCurrent: ${tileLibrary.length}/${MAX_TILES}`);
       return;
@@ -930,18 +918,15 @@ function initEventListeners() {
           
           loadedCount++;
           
-          // After all files are loaded
           if (loadedCount === files.length) {
-            // Auto-select the first new tile
             selectedTileIndices.clear();
             selectedTileIndex = tileLibrary.length - files.length;
             selectedTileIndices.add(selectedTileIndex);
             
-            // Sort and update display
             sortTileLibrary();
             updateTilePalette();
             drawMap();
-            alert(`Added ${files.length} tile(s) to library. Sorted by number (000-1999).\nTotal: ${tileLibrary.length}/${MAX_TILES}`);
+            alert(`Added ${files.length} tile(s). Total: ${tileLibrary.length}/${MAX_TILES}`);
           }
         };
         img.src = evt.target.result;
@@ -1062,7 +1047,6 @@ function saveMapAsTXT() {
   text += '# Map size: 50x50 tiles\n';
   text += '# Tile Index to Name mapping (sorted):\n';
   
-  // Sort before saving
   sortTileLibrary();
   
   tileLibrary.forEach((tile, idx) => {
@@ -1090,17 +1074,14 @@ function exportMapAsPNG() {
     return;
   }
   
-  // Create a temporary canvas at 1x scale for export
   const exportCanvas = document.createElement('canvas');
   exportCanvas.width = MapCols * OriginalTileSize;
   exportCanvas.height = MapRows * OriginalTileSize;
   const exportCtx = exportCanvas.getContext('2d');
   
-  // Draw background
-  exportCtx.fillStyle = '#2c3e50';
+  exportCtx.fillStyle = '#222';
   exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
   
-  // Draw tiles at 1x scale
   for (let y = 0; y < MapRows; y++) {
     for (let x = 0; x < MapCols; x++) {
       const tileIndex = map[y][x];
@@ -1117,7 +1098,6 @@ function exportMapAsPNG() {
     }
   }
   
-  // Create download link
   const link = document.createElement('a');
   link.href = exportCanvas.toDataURL('image/png');
   link.download = `map_${Date.now()}.png`;
@@ -1140,7 +1120,7 @@ $(document).ready(function() {
   initApp();
 });
 
-// Handle window resize - recalculate fit-to-screen
+// Handle window resize
 $(window).on('resize', function() {
   if (isFitToScreen || TileScale === 0) {
     updateMapCanvasSize();
