@@ -1,0 +1,150 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+  height: 100vh; 
+  font-family: sans-serif; 
+  overflow: hidden;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+canvas { border: 1px solid #333; image-rendering: pixelated; cursor: crosshair; }
+
+.container { 
+  display: flex; 
+  flex-direction: column; 
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.palette { 
+  display: flex; 
+  gap: 4px; 
+  margin-top: 8px; 
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.color-swatch { 
+  width: 22px; 
+  height: 22px; 
+  border: 1px solid #333; 
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.selected { border: 2px solid #000; }
+
+button, input { 
+  margin-top: 6px; 
+  padding: 5px 8px; 
+  cursor: pointer; 
+  border: 1px solid #ccc;
+  background: white;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+
+button:hover, input:hover {
+  background: #f0f0f0;
+}
+
+.tool-panel { 
+  display: flex; 
+  gap: 6px; 
+  align-items: center; 
+  margin-top: 8px; 
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+h2 { 
+  margin-bottom: 6px; 
+  color: #333;
+  font-size: 1.2em;
+}
+
+.file-input-container { 
+  display: flex; 
+  flex-direction: column;
+  width: 100%;
+  max-width: 180px;
+}
+
+.file-input-container label { 
+  margin-bottom: 2px; 
+  font-weight: bold;
+  font-size: 0.8em;
+  color: #555;
+}
+
+.canvas-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 6px 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #ddd;
+}
+
+.tile-editor-controls {
+  background: #f9f9f9;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #eee;
+  margin-top: 6px;
+}
+
+/* Main layout */
+.main-content {
+  flex: 1;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #fff;
+  overflow: auto;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.editor-area {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.info-panel {
+  margin-top: 15px;
+  padding: 10px;
+  background: #f8f8f8;
+  border-radius: 5px;
+  border: 1px solid #eee;
+  width: 100%;
+  max-width: 500px;
+}
+
+.info-panel h3 {
+  margin: 0 0 8px 0;
+  color: #555;
+  font-size: 1em;
+}
+
+.info-panel p {
+  margin: 0;
+  font-size: 0.85em;
+  color: #666;
+  line-height: 1.4;
+}
