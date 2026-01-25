@@ -58,10 +58,12 @@
 
     <!-- Map Container -->
     <div class="map-container" id="mapContainer">
-      <div class="coord-display" id="coordDisplay">X:0 Y:0</div>
-      <div class="selection-info" id="selectionInfo"></div>
       <canvas id="mapEditor"></canvas>
     </div>
+
+    <!-- Fixed overlays - placed outside map container -->
+    <div class="coord-display" id="coordDisplay">X:0 Y:0</div>
+    <div class="selection-info" id="selectionInfo"></div>
 
     <!-- Status Bar -->
     <div class="status-bar">
@@ -90,6 +92,13 @@
         <span id="tileStats">0 tiles</span>
       </div>
     </div>
+
+    <!-- Tile Management Buttons -->
+    <div class="tile-management">
+      <button id="saveTileSetBtn" class="tool-icon" title="Save current tile set">💾 Save Set</button>
+      <button id="loadTileSetBtn" class="tool-icon" title="Load saved tile set">📂 Load Set</button>
+      <button id="removeLastTilesBtn" class="tool-icon" title="Remove last imported tiles">🗑️ Remove Last</button>
+    </div>
     
     <div class="import-btn" id="importTilesBtn">
       📥 Click to Import Tiles
@@ -111,8 +120,17 @@
   </div>
 </div>
 
+<!-- Drag & Drop Overlay -->
+<div class="drag-drop-overlay" id="dragDropOverlay">
+  <div class="drag-drop-content">
+    <div class="drag-drop-icon">📤</div>
+    <div class="drag-drop-text">Drop PNG files here</div>
+    <div class="drag-drop-hint">Import tiles directly by dragging</div>
+  </div>
+</div>
+
 <!-- jQuery -->
-<script src="jquery.js"></script>
-<script type="module" src="edit_map.js"></script>
+<script src="./jquery.js"></script>
+<script type="module" src="./edit_map.js"></script>
 </body>
 </html>

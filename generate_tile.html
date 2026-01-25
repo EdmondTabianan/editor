@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terrain Tile Generator - Style Reference System</title>
+    <script src="./jquery.js"></script>
+    <link rel="stylesheet" href="generate.css">
+    <style>
+        .reference-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(30, 40, 55, 0.8);
+            border-radius: 8px;
+            border-left: 4px solid #5dade2;
+        }
+        
+        .reference-canvas {
+            image-rendering: pixelated;
+            border: 2px solid #2c4a6e;
+            background: #0a121b;
+            margin: 10px 0;
+        }
+        
+        .reference-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .style-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .style-sample {
+            width: 32px;
+            height: 32px;
+            image-rendering: pixelated;
+            border: 1px solid #444;
+            cursor: pointer;
+        }
+        
+        .style-sample.active {
+            border: 2px solid #f0c674;
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Terrain Tile Generator - Style Reference System</h1>
+            <p class="subtitle">Create seamless 16×16 terrain tiles using reference images for style consistency.</p>
+        </header>
+        
+        <div class="app-container">
+            <div class="controls">
+                <h3>Tile Configuration</h3>
+                
+                <div class="control-group">
+                    <label for="tileName">Tile Name:</label>
+                    <input type="text" id="tileName" value="terrain_tile">
+                </div>
+                
+                <div class="section-title">Reference Image</div>
+                <div class="reference-section">
+                    <label for="imageUpload">Upload Reference Image:</label>
+                    <input type="file" id="imageUpload" accept="image/*" style="width: 100%; margin: 10px 0;">
+                    <div class="reference-controls">
+                        <button onclick="loadReferenceImage()" style="padding: 8px 12px; background: #5dade2; border: none; border-radius: 4px; color: white; cursor: pointer;">
+                            Load Reference
+                        </button>
+                        <button onclick="extractStyleFromReference()" style="padding: 8px 12px; background: #f0c674; border: none; border-radius: 4px; color: #1a2a3a; cursor: pointer;">
+                            Extract Style
+                        </button>
+                    </div>
+                    <canvas id="referenceCanvas" width="64" height="64" class="reference-canvas"></canvas>
+                    <div class="style-preview" id="stylePreview">
+                        <!-- Style samples will appear here -->
+                    </div>
+                </div>
+                
+                <div class="section-title">Lighting & Details</div>
+                
+                <div class="control-group">
+                    <label for="lightDir">Light Direction:</label>
+                    <select id="lightDir">
+                        <option value="top-left" selected>Top-Left</option>
+                        <option value="top-right">Top-Right</option>
+                        <option value="diagonal">Diagonal</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="lightIntensity">Light Intensity:</label>
+                    <select id="lightIntensity">
+                        <option value="soft">Soft</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="strong">Strong</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="realismLevel">Realism Level:</label>
+                    <select id="realismLevel">
+                        <option value="low">Low (Pixel Perfect)</option>
+                        <option value="medium" selected>Medium (Enhanced)</option>
+                        <option value="high">High (Maximum)</option>
+                    </select>
+                </div>
+                
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="useReferenceStyle" checked>
+                        Use reference image style
+                    </label>
+                    
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="addEnvironmentalDetails" checked>
+                        Add environmental details
+                    </label>
+                    
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="enhanceVariation" checked>
+                        Enhance variation
+                    </label>
+                    
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="saveStylePreset" checked>
+                        Save style as preset
+                    </label>
+                </div>
+                
+                <div class="button-group">
+                    <button class="generate-btn" onclick="TerrainGenerator.generateTile()">
+                        <span>Generate Tile</span>
+                    </button>
+                    <button class="save-btn" onclick="TerrainGenerator.savePNG()">
+                        <span>Save PNG (16×16)</span>
+                    </button>
+                </div>
+                
+                <div class="tile-properties">
+                    <div class="property">
+                        <div class="property-name">Current Tile</div>
+                        <div class="property-value" id="currentTileName">terrain_tile</div>
+                    </div>
+                    <div class="property">
+                        <div class="property-name">Style Source</div>
+                        <div class="property-value" id="styleSource">Reference Image</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="previews">
+                <div class="preview-container">
+                    <div class="single-tile-container">
+                        <h3>Generated Tile (Scaled 3×)</h3>
+                        <div class="feature-indicator" id="featureIndicator">
+                            Using Reference Style
+                        </div>
+                        <canvas id="tile" width="48" height="48"></canvas>
+                        <div class="canvas-label">16×16 pixels → 48×48 preview</div>
+                    </div>
+                    
+                    <div class="grid-preview-container">
+                        <h3>9×9 Tile Grid (Scaled 3×)</h3>
+                        <div class="canvas-label">Each tile: 16×16 pixels, total: 144×144 pixels</div>
+                        <canvas id="preview" width="432" height="432"></canvas>
+                        <div class="info-box" style="margin-top: 15px;">
+                            <strong>Note:</strong> Tiles use reference image style with enhanced variation while maintaining perfect tiling.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Terrain Tile Generator - Uses reference images for pixel-perfect style consistency</p>
+            <p>Extracts and enhances styles while maintaining seamless tiling in all directions</p>
+        </footer>
+    </div>
+
+    <script src="generate.js"></script>
+</body>
+</html>
