@@ -111,12 +111,89 @@ body {
   z-index: 1;
 }
 
+/* ===== MAIN CONTROLS - FIXED ALIGNMENT ===== */
+.main-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--gradient-dark);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  height: 60px;
+  flex-shrink: 0;
+  z-index: 2000;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  position: relative;
+  gap: var(--spacing-md);
+}
+
+/* Control groups - FIXED ALIGNMENT */
 .control-group {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
   flex-wrap: nowrap;
   overflow: visible;
+  min-height: var(--control-height);
+  flex-shrink: 0;
+}
+
+/* Left control group - File menu only */
+.control-group:first-child {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+}
+
+/* Ultra-minimal hidden scrollbar */
+.control-group:nth-child(2)::-webkit-scrollbar {
+  height: 3px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.control-group:nth-child(2):hover::-webkit-scrollbar,
+.control-group:nth-child(2):focus-within::-webkit-scrollbar,
+.control-group:nth-child(2):active::-webkit-scrollbar {
+  opacity: 0.3;
+}
+
+.control-group:nth-child(2)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.control-group:nth-child(2)::-webkit-scrollbar-thumb {
+  background: var(--neon-blue);
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.control-group:nth-child(2):hover::-webkit-scrollbar-thumb,
+.control-group:nth-child(2):focus-within::-webkit-scrollbar-thumb,
+.control-group:nth-child(2):active::-webkit-scrollbar-thumb {
+  opacity: 0.5;
+}
+
+.control-group:nth-child(2):hover::-webkit-scrollbar-thumb:hover {
+  opacity: 0.8;
+  background: var(--neon-pink);
+  box-shadow: 0 0 10px var(--glow-pink);
+}
+/* JavaScript-controlled scrollbar */
+.control-group:nth-child(2).scrolling::-webkit-scrollbar-thumb,
+.control-group:nth-child(2).hovering::-webkit-scrollbar-thumb {
+  opacity: 0.6 !important;
+}
+
+.control-group:nth-child(2).scrolling::-webkit-scrollbar,
+.control-group:nth-child(2).hovering::-webkit-scrollbar {
+  opacity: 1 !important;
+}
+/* Right control group - Zoom controls */
+.control-group:last-child {
+  flex: 0 0 auto;
+  justify-content: flex-end;
 }
 
 /* BUTTONS - Modern 8-bit style */
@@ -180,6 +257,7 @@ button:disabled:hover {
   box-shadow: var(--shadow-sm);
   position: relative;
   z-index: 10001;
+  min-width: 80px;
 }
 
 .file-menu-btn:hover {
@@ -243,18 +321,22 @@ button:disabled:hover {
   margin: var(--spacing-sm) 0;
 }
 
-/* Mode Buttons */
+/* Mode buttons wrapper */
 .mode-buttons {
   display: flex;
   background: rgba(255, 255, 255, 0.05);
   border-radius: var(--border-radius);
   padding: 4px;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .mode-buttons button {
   background: transparent;
   min-width: 70px;
+  height: 32px;
+  font-size: 13px;
+  padding: 0 12px;
 }
 
 .mode-buttons button.active {
@@ -263,9 +345,19 @@ button:disabled:hover {
   box-shadow: var(--shadow-sm);
 }
 
+/* Individual tool buttons in center group */
+.control-group:nth-child(2) > button:not(.mode-buttons button) {
+  min-width: 80px;
+  height: var(--control-height);
+  font-size: 13px;
+  padding: 0 var(--spacing-md);
+  flex-shrink: 0;
+}
+
 /* Grid Toggle */
 .grid-toggle {
   background: rgba(255, 255, 255, 0.05);
+  min-width: 70px;
 }
 
 .grid-toggle.active {
@@ -280,6 +372,7 @@ button:disabled:hover {
   color: white;
   font-weight: 600;
   min-width: 70px;
+  flex-shrink: 0;
 }
 
 .undo-btn:hover, .redo-btn:hover {
@@ -400,22 +493,6 @@ button:disabled:hover {
   to { opacity: 1; }
 }
 
-/* ===== MAIN CONTROLS ===== */
-.main-controls {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background: var(--gradient-dark);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  height: 60px;
-  flex-shrink: 0;
-  z-index: 2000;
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-  position: relative;
-}
-
 /* STATUS BAR */
 .status-bar {
   display: flex;
@@ -499,14 +576,15 @@ button:disabled:hover {
   flex-shrink: 0;
   position: relative;
   z-index: 1;
+  flex-wrap: wrap;
 }
 
 .tile-management button {
   flex: 1;
+  min-width: 80px;
   height: 32px;
   font-size: 12px;
   background: rgba(255, 255, 255, 0.05);
-  min-width: 0;
   padding: 0 8px;
 }
 
@@ -547,6 +625,42 @@ button:disabled:hover {
 
 /* Hide import button when tiles exist */
 .tile-grid:not(:empty) ~ #importTilesBtn {
+  display: none !important;
+}
+
+/* Import button placeholder */
+.import-btn-placeholder {
+  margin: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: var(--border-radius-lg);
+  color: var(--text-secondary);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  font-size: 14px;
+  font-weight: 500;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.import-btn-placeholder:hover {
+  border-color: var(--neon-blue);
+  background: rgba(0, 204, 255, 0.05);
+  color: var(--neon-blue);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Hide import placeholder when tiles exist */
+.tile-grid:not(:empty) ~ .import-btn-placeholder {
   display: none !important;
 }
 
@@ -890,6 +1004,82 @@ button:disabled:hover {
 @keyframes pulseBorder {
   0%, 100% { border-color: var(--neon-blue); }
   50% { border-color: var(--neon-purple); }
+}
+
+/* Grid status display */
+.grid-status {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--neon-green);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Save status */
+#saveStatus {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(76, 175, 80, 0.9);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 1000;
+}
+
+#saveStatus.show {
+  opacity: 1;
+}
+
+/* Button states */
+.btn-clearing {
+  opacity: 0.7;
+  cursor: not-allowed !important;
+}
+
+.btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status-clearing {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 20px 30px;
+  border-radius: 8px;
+  z-index: 1000;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* ===== RESPONSIVE DESIGN ===== */

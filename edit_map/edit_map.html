@@ -3,6 +3,7 @@
 <head>
   <title>Map Editor</title>
   <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
 
@@ -15,7 +16,7 @@
       <div class="control-group">
         <div class="file-menu">
           <button class="file-menu-btn tool-icon" id="fileMenuBtn">
-            📁 File ▼
+            File ▼
           </button>
           <div class="file-menu-content" id="fileMenuContent">
             <button class="file-menu-item" id="menuImportTiles">📥 Import Tiles...</button>
@@ -32,10 +33,11 @@
       <!-- Center: Mode Buttons with Undo/Redo -->
       <div class="control-group">
         <button id="modePlace" class="active tool-icon">🖌️ Place</button>
-        <button id="modeSelect" class="tool-icon">🔲 Select</button>
-        <button id="clearSelectedAreaBtn" class="tool-icon">🗑️ Area</button>
-        <button id="deselectAllBtn" class="tool-icon">✖️ Deselect</button>
-        <button id="gridToggleBtn" class="tool-icon grid-toggle active">🔲 Grid</button>
+        <button id="modeSelect" class="tool-icon">Select</button>
+        <button id="fillSelectionBtn" class="btn" title="Fill selection with selected tile">Fill Selection</button>
+        <button id="clearSelectedAreaBtn" class="tool-icon">Area</button>
+        <button id="deselectAllBtn" class="tool-icon">Deselect</button>
+        <button id="gridToggleBtn" class="tool-icon grid-toggle active">Grid</button>
         
         <!-- Add Undo/Redo buttons -->
         <button id="undoBtn" class="tool-icon undo-btn" title="Undo (Ctrl+Z)">↶ Undo</button>
@@ -44,7 +46,7 @@
       
       <!-- Right: Zoom Controls -->
       <div class="control-group">
-        <button id="fitMapBtn" class="tool-icon zoom-btn">📐</button>
+        <!-- <button id="fitMapBtn" class="tool-icon zoom-btn">📐</button> -->
         <button id="zoomOutBtn" class="tool-icon zoom-btn">➖</button>
         <div class="zoom-display" id="zoomLevel">Fit</div>
         <button id="zoomInBtn" class="tool-icon zoom-btn">➕</button>
@@ -52,7 +54,7 @@
       </div>
     </div>
 
-    <!-- Hidden file inputs -->
+    <!-- Hidden file inputs - MUST BE BEFORE mapContainer for proper reference -->
     <input type="file" id="importTileForMap" accept="image/png" multiple class="file-input-hidden"/>
     <input type="file" id="importMapTXT" accept=".txt" class="file-input-hidden"/>
 
@@ -80,6 +82,9 @@
       <div class="status-item">
         <span id="tileCountInfo">Tiles: 0/2000</span>
       </div>
+      <div class="status-item">
+        <span id="storageInfo">Storage: 0 KB</span>
+      </div>
     </div>
   </div>
 
@@ -95,12 +100,33 @@
 
     <!-- Tile Management Buttons -->
     <div class="tile-management">
-      <button id="saveTileSetBtn" class="tool-icon" title="Save current tile set">💾 Save Set</button>
-      <button id="loadTileSetBtn" class="tool-icon" title="Load saved tile set">📂 Load Set</button>
-      <button id="removeLastTilesBtn" class="tool-icon" title="Remove last imported tiles">🗑️ Remove Last</button>
+      <button id="importTilesBtn" class="btn" title="Import PNG tiles">
+          Import Tiles
+      </button>
+      <button id="removeLastTilesBtn" class="btn" title="Remove last imported tiles" disabled>
+        Remove Last
+      </button>
+      <button id="saveTileSetBtn" class="btn" title="Save current tile set">
+        Save Set
+      </button>
+      <button id="loadTileSetBtn" class="btn" title="Load saved tile set">
+        Load Set
+      </button>
+      <button id="saveSessionBtn" class="btn" title="Save current session">
+        Save Session
+      </button>
+      <button id="loadSessionBtn" class="btn" title="Load last session">
+        Load Last
+      </button>
+      <button id="clearSessionBtn" class="btn" title="Clear saved session" disabled>
+        Clear Saved
+      </button>
+      <!-- Add soft reset button if needed -->
+      <!-- <button id="softResetBtn" class="btn" title="Reset map but keep tiles">🔄 Soft Reset</button> -->
+      <div id="saveStatus" class="status-info"></div>
     </div>
     
-    <div class="import-btn" id="importTilesBtn">
+    <div class="import-btn-placeholder" id="importTilesBtnPlaceholder">
       📥 Click to Import Tiles
     </div>
     
@@ -117,6 +143,9 @@
     <div class="tile-limit-warning" id="tileLimitWarning">
       ⚠️ Tile limit: 2000 (000-1999)
     </div>
+    
+    <!-- Grid Status Display -->
+    <div class="grid-status" id="gridStatus">Grid: ON</div>
   </div>
 </div>
 
@@ -129,8 +158,18 @@
   </div>
 </div>
 
+<!-- Loading indicator (hidden by default) -->
+<div id="loadingIndicator" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 9999;">
+  Loading...
+</div>
+
+<!-- Success message container -->
+<div id="successMessageContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;"></div>
+
+<!-- Clear confirmation modal will be injected here -->
+
 <!-- jQuery -->
-<script src="./jquery.js"></script>
-<script type="module" src="./edit_map.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="edit_map.js"></script>
 </body>
 </html>
