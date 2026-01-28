@@ -951,6 +951,42 @@ button:disabled:hover {
   -webkit-overflow-scrolling: touch;
 }
 
+.api-badge {
+  font-size: 9px;
+  background: #4299e1;
+  color: white;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* For the disabled save button */
+.file-menu-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.file-menu-item.disabled:hover {
+  background-color: transparent;
+}
+
+/* For grid status */
+.grid-toggle.active {
+  background-color: #4a5568;
+}
+
+/* For undo/redo button states */
+.undo-btn.available, .redo-btn.available {
+  opacity: 1;
+}
+
+.undo-btn:disabled, .redo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ===== DRAG & DROP OVERLAY ===== */
 .drag-drop-overlay {
   position: fixed;

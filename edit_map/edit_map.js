@@ -768,7 +768,805 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
-// === Initialize Everything ===
+// === Enhanced File System Access API Implementation ===
+let currentFileHandle = null;
+
+// Save Map - uses File System Access API if available
+async function saveMap() {
+  if (tileLibrary.length === 0) {
+    alert('No tiles imported yet. Please import some tiles first.');
+    return;
+  }
+  
+  if (!currentFileHandle) {
+    alert('No map imported. Please use "Save Map as TXT" first or import a map.');
+    return;
+  }
+  
+  const content = generateMapContent();
+  
+  try {
+    // Write to the existing file handle
+    await writeFile(currentFileHandle, content);
+    
+    // Show success message
+    showSuccessMessage(`Saved: ${await currentFileHandle.getFile().then(f => f.name)}`);
+    return true;
+    
+  } catch (error) {
+    console.error('Error saving file:', error);
+    
+    // If permission denied, request new file handle
+    if (error.name === 'NotAllowedError') {
+      alert('Permission denied. Please use "Save Map as TXT" to save to a new location.');
+    } else {
+      alert('Error saving file: ' + error.message);
+    }
+  }
+}
+
+// Save Map As - always opens save dialog using File System Access API
+async function saveMapAsTXT() {
+  if (tileLibrary.length === 0) {
+    alert('No tiles imported yet. Please import some tiles first.');
+    return;
+  }
+  
+  try {
+    const content = generateMapContent();
+    
+    // Use File System Access API
+    const options = {
+      types: [{
+        description: 'Text Files',
+        accept: {
+          'text/plain': ['.txt']
+        }
+      }],
+      suggestedName: `map_${MapCols}x${MapRows}.txt`
+    };
+    
+    // Show save file picker
+    const handle = await window.showSaveFilePicker(options);
+    
+    // Write the file
+    await writeFile(handle, content);
+    
+    // Store the file handle for future saves
+    currentFileHandle = handle;
+    
+    // Update status and enable save button
+    updateMapFileStatus();
+    updateSaveButtonState();
+    
+    // Show success message
+    showSuccessMessage(`Saved as: ${await handle.getFile().then(f => f.name)}`);
+    
+    return true;
+    
+  } catch (error) {
+    // User cancelled the save dialog
+    if (error.name === 'AbortError') {
+      console.log('Save cancelled by user');
+      return false;
+    }
+    
+    console.error('Error saving file:', error);
+    
+    // Fall back to old method if API not available
+    if (error.name === 'TypeError' || error.name === 'ReferenceError') {
+      console.log('File System Access API not available, using fallback');
+      saveMapAsTXTFallback();
+    } else {
+      alert('Error saving file: ' + error.message);
+    }
+  }
+}
+
+// Fallback for browsers without File System Access API
+function saveMapAsTXTFallback() {
+  const content = generateMapContent();
+  
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  
+  const defaultName = `map_${MapCols}x${MapRows}.txt`;
+  
+  a.download = defaultName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Generate map content as plain text (no headers)
+function generateMapContent() {
+  let content = '';
+  
+  for (let y = 0; y < MapRows; y++) {
+    const row = [];
+    for (let x = 0; x < MapCols; x++) {
+      const tileIndex = map[y][x];
+      row.push(tileIndex >= 0 ? tileIndex.toString() : '.');
+    }
+    content += row.join(' ') + '\n';
+  }
+  
+  return content;
+}
+
+// Write file using File System Access API
+async function writeFile(fileHandle, contents) {
+  try {
+    const writable = await fileHandle.createWritable();
+    await writable.write(contents);
+    await writable.close();
+    
+    console.log('File saved successfully');
+    return true;
+  } catch (error) {
+    console.error('Error writing file:', error);
+    throw error;
+  }
+}
+
+// Import Map with File System Access API
+async function importMapWithAPI() {
+  if (tileLibrary.length === 0) {
+    alert('Please import some tiles first before loading a map!');
+    return false;
+  }
+  
+  try {
+    // Show file picker
+    const [fileHandle] = await window.showOpenFilePicker({
+      types: [{
+        description: 'Text Files',
+        accept: {
+          'text/plain': ['.txt']
+        }
+      }],
+      multiple: false
+    });
+    
+    // Get the file
+    const file = await fileHandle.getFile();
+    
+    // Store file handle for future saves
+    currentFileHandle = fileHandle;
+    
+    // Read file content
+    const text = await file.text();
+    
+    // Parse and load map data
+    loadMapFromText(text);
+    
+    // Update status and enable save button
+    updateMapFileStatus();
+    updateSaveButtonState();
+    
+    // Show success message
+    showSuccessMessage(`Imported: ${file.name}`);
+    
+    return true;
+    
+  } catch (error) {
+    // User cancelled
+    if (error.name === 'AbortError') {
+      console.log('Import cancelled by user');
+      return false;
+    }
+    
+    console.error('Error importing file:', error);
+    
+    // Fall back to old method
+    if (error.name === 'TypeError' || error.name === 'ReferenceError') {
+      console.log('File System Access API not available, using fallback');
+      document.getElementById('importMapTXT').click();
+    } else {
+      alert('Error importing file: ' + error.message);
+    }
+  }
+}
+
+// Helper function to load map from text
+function loadMapFromText(text) {
+  const lines = text.split('\n');
+  
+  // Save current state before importing
+  saveToHistory('Import Map');
+  
+  // Clear current map
+  for (let y = 0; y < MapRows; y++) {
+    for (let x = 0; x < MapCols; x++) {
+      map[y][x] = -1;
+    }
+  }
+  
+  let lineIndex = 0;
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // Skip empty lines and comments
+    if (trimmed === '' || trimmed.startsWith('#')) {
+      continue;
+    }
+    
+    if (lineIndex < MapRows) {
+      const cells = trimmed.split(/\s+/);
+      for (let x = 0; x < Math.min(MapCols, cells.length); x++) {
+        const cell = cells[x];
+        if (cell === '.' || cell === '-1') {
+          map[lineIndex][x] = -1;
+        } else {
+          const tileIndex = parseInt(cell);
+          if (!isNaN(tileIndex) && tileIndex >= 0 && tileIndex < tileLibrary.length) {
+            map[lineIndex][x] = tileIndex;
+          } else {
+            map[lineIndex][x] = -1;
+          }
+        }
+      }
+      lineIndex++;
+      if (lineIndex >= MapRows) break;
+    }
+  }
+  
+  drawMap();
+}
+
+// Update map file status display
+function updateMapFileStatus() {
+  const mapInfo = $('#mapInfo');
+  if (currentFileHandle) {
+    currentFileHandle.getFile().then(file => {
+      mapInfo.text(`Map: 50×50 (${file.name})`);
+    }).catch(() => {
+      mapInfo.text(`Map: 50×50`);
+    });
+  } else {
+    mapInfo.text(`Map: 50×50`);
+  }
+}
+
+// Update save button state (enabled/disabled)
+function updateSaveButtonState() {
+  const saveBtn = $('#menuSaveMap');
+  const hasFileHandle = currentFileHandle !== null;
+  
+  if (saveBtn.length) {
+    if (hasFileHandle) {
+      saveBtn.prop('disabled', false).removeClass('disabled');
+    } else {
+      saveBtn.prop('disabled', true).addClass('disabled');
+    }
+  }
+}
+
+// Check if File System Access API is available
+function isFileSystemAccessAPIAvailable() {
+  return 'showOpenFilePicker' in window && 'showSaveFilePicker' in window;
+}
+
+// === Update initEventListeners with new file handling ===
+function initEventListeners() {
+  // File Menu functionality
+  $('#fileMenuBtn').on('click', function(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    const menu = $('#fileMenuContent');
+    const isVisible = menu.hasClass('show');
+    
+    // Position the menu relative to the button
+    const btnRect = this.getBoundingClientRect();
+    menu.css({
+      position: 'fixed',
+      top: btnRect.bottom + 4 + 'px',
+      left: btnRect.left + 'px'
+    });
+    
+    if (!isVisible) {
+      // Close all other menus first
+      $('.file-menu-content').removeClass('show');
+      
+      // Show this menu
+      menu.addClass('show');
+      
+      // Add click handler to close when clicking outside
+      const closeHandler = function(event) {
+        if (!menu.is(event.target) && menu.has(event.target).length === 0 &&
+            !$('#fileMenuBtn').is(event.target) && $('#fileMenuBtn').has(event.target).length === 0) {
+          menu.removeClass('show');
+          $(document).off('click', closeHandler);
+        }
+      };
+      
+      // Wait for the current event to finish before adding the handler
+      setTimeout(() => {
+        $(document).on('click', closeHandler);
+      }, 0);
+    } else {
+      menu.removeClass('show');
+      $(document).off('click.fileMenuClose');
+    }
+  });
+  
+  // File menu items
+  $('#menuImportTiles').on('click', function(e) {
+    e.stopPropagation();
+    $('#fileMenuContent').removeClass('show');
+    setTimeout(() => {
+      $('#importTileForMap').click();
+    }, 50);
+  });
+  
+  $('#menuImportMap').on('click', async function(e) {
+    e.stopPropagation();
+    $('#fileMenuContent').removeClass('show');
+    setTimeout(async () => {
+      await importMapWithAPI();
+    }, 50);
+  });
+  
+  $('#menuSaveMap').on('click', async function(e) {
+    e.stopPropagation();
+    $('#fileMenuContent').removeClass('show');
+    setTimeout(async () => {
+      await saveMap();
+    }, 50);
+  });
+  
+  $('#menuSaveMapAs').on('click', async function(e) {
+    e.stopPropagation();
+    $('#fileMenuContent').removeClass('show');
+    setTimeout(async () => {
+      await saveMapAsTXT();
+    }, 50);
+  });
+  
+  $('#menuExportImage').on('click', function(e) {
+    e.stopPropagation();
+    $('#fileMenuContent').removeClass('show');
+    setTimeout(() => {
+      exportMapAsPNG();
+    }, 50);
+  });
+  
+  $('#menuClearMap').on('click', function(e) {
+    e.stopPropagation();
+    $('#fileMenuContent').removeClass('show');
+    setTimeout(() => {
+      if (confirm('Clear the entire 50x50 map?')) {
+        // Clear file tracking
+        currentFileHandle = null;
+        updateMapFileStatus();
+        updateSaveButtonState();
+        
+        // Save current state before clearing
+        saveToHistory('Clear Map');
+        
+        for (let y = 0; y < MapRows; y++) {
+          for (let x = 0; x < MapCols; x++) {
+            map[y][x] = -1;
+          }
+        }
+        drawMap();
+      }
+    }, 50);
+  });
+  
+  // Session management
+  $('#saveSessionBtn').on('click', function() {
+    if (saveToLocalStorage()) {
+      showSuccessMessage('Session saved successfully!');
+    } else {
+      alert('Error saving session.');
+    }
+  });
+  
+  $('#loadSessionBtn').on('click', function() {
+    if (confirm('Load last saved session? Current unsaved changes will be lost.')) {
+      loadFromLocalStorage();
+      updateClearButtonState();
+    }
+  });
+  
+  $('#clearSessionBtn').on('click', clearLocalStorage);
+  
+  // Editor controls
+  $('#fillSelectionBtn').on('click', function() {
+    if (selectionRect.startX < 0 || selectionRect.startY < 0 || 
+        selectionRect.endX < 0 || selectionRect.endY < 0) {
+      alert('Please select an area first by clicking and dragging in Select mode.');
+      return;
+    }
+    
+    if (tileLibrary.length === 0) {
+      alert('No tiles imported. Please import tiles first.');
+      return;
+    }
+    
+    if (selectedTileIndex < 0) {
+      alert('No tile selected. Please select a tile first.');
+      return;
+    }
+    
+    fillSelectionWithTile();
+    drawMap();
+  });
+  
+  // Grid toggle button
+  $('#gridToggleBtn').on('click', toggleGrid);
+  
+  // Import tiles button
+  $('#importTilesBtn').on('click', function() {
+    $('#importTileForMap').click();
+  });
+  
+  // Deselect All button
+  $('#deselectAllBtn').on('click', function() {
+    selectedTileIndices.clear();
+    if (tileLibrary.length > 0) {
+      selectedTileIndex = 0;
+      selectedTileIndices.add(0);
+    }
+    updateTileGrid();
+  });
+  
+  // Undo/Redo buttons
+  $('#undoBtn').on('click', function() {
+    undo();
+  });
+  
+  $('#redoBtn').on('click', function() {
+    redo();
+  });
+  
+  // Zoom Functions
+  $('#zoomInBtn').on('click', function() {
+    isFitToScreen = false;
+    if (TileScale < MAX_TileScale) {
+      TileScale = TileScale === 0 ? 1 : TileScale + 1;
+      updateMapCanvasSize();
+      updateGridStatus();
+    }
+  });
+
+  $('#zoomOutBtn').on('click', function() {
+    isFitToScreen = false;
+    if (TileScale > MIN_TileScale) {
+      TileScale--;
+      updateMapCanvasSize();
+      updateGridStatus();
+    }
+  });
+
+  $('#zoom1xBtn').on('click', function() {
+    isFitToScreen = false;
+    TileScale = 1;
+    updateMapCanvasSize();
+    updateGridStatus();
+  });
+  
+  // Editor Mode Buttons
+  $('#modePlace').on('click', function() {
+    const hadSelection = editorMode === 'select' && 
+      selectionRect.startX >= 0 && selectionRect.startY >= 0 &&
+      selectionRect.endX >= 0 && selectionRect.endY >= 0;
+    
+    editorMode = 'place';
+    $('#modePlace').addClass('active');
+    $('#modeSelect').removeClass('active');
+    
+    mapEditorCanvas.style.cursor = 'crosshair';
+    
+    if (hadSelection && tileLibrary.length > 0 && selectedTileIndex >= 0) {
+      fillSelectionWithTile();
+    }
+    
+    clearSelection();
+    drawMap();
+  });
+
+  $('#modeSelect').on('click', function() {
+    editorMode = 'select';
+    $('#modeSelect').addClass('active');
+    $('#modePlace').removeClass('active');
+    mapEditorCanvas.style.cursor = 'cell';
+  });
+  
+  // Clear Selected Area Button
+  $('#clearSelectedAreaBtn').on('click', function() {
+    if (selectionRect.startX < 0 || selectionRect.startY < 0 || 
+        selectionRect.endX < 0 || selectionRect.endY < 0) {
+      alert('Please select an area first by clicking and dragging in Select mode.');
+      return;
+    }
+    
+    const x1 = Math.min(selectionRect.startX, selectionRect.endX);
+    const y1 = Math.min(selectionRect.startY, selectionRect.endY);
+    const x2 = Math.max(selectionRect.startX, selectionRect.endX);
+    const y2 = Math.max(selectionRect.startY, selectionRect.endY);
+    
+    if (confirm(`Clear ${x2-x1+1}×${y2-y1+1} area?`)) {
+      saveToHistory('Clear Area');
+      
+      for (let y = y1; y <= y2; y++) {
+        for (let x = x1; x <= x2; x++) {
+          if (x >= 0 && x < MapCols && y >= 0 && y < MapRows) {
+            map[y][x] = -1;
+          }
+        }
+      }
+      drawMap();
+    }
+  });
+  
+  // Tile Management buttons
+  $('#saveTileSetBtn').on('click', saveTileSet);
+  $('#loadTileSetBtn').on('click', loadTileSet);
+  $('#removeLastTilesBtn').on('click', removeLastImportedTiles).prop('disabled', true);
+  
+  // Map Editor Canvas event listeners
+  let isDragging = false;
+  let lastX = -1, lastY = -1;
+  let mouseDownTime = 0;
+
+  function updateCoordDisplay(x, y) {
+    $('#coordDisplay').text(`X:${x} Y:${y}`);
+  }
+
+  function getMapCoordinates(e) {
+    const rect = mapEditorCanvas.getBoundingClientRect();
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    const canvasX = mouseX - rect.left;
+    const canvasY = mouseY - rect.top;
+    const effectiveTileScale = isFitToScreen && TileScale === 0 ? calculateFitZoom() : TileScale;
+    const scaledTileSize = OriginalTileSize * effectiveTileScale;
+    const x = Math.floor(canvasX / scaledTileSize);
+    const y = Math.floor(canvasY / scaledTileSize);
+    return { x, y };
+  }
+
+  $(mapEditorCanvas).on('mousemove', function(e) {
+    const { x, y } = getMapCoordinates(e);
+    const clampedX = Math.max(0, Math.min(x, MapCols - 1));
+    const clampedY = Math.max(0, Math.min(y, MapRows - 1));
+    
+    updateCoordDisplay(clampedX, clampedY);
+    
+    if (isDragging && editorMode === 'place' && tileLibrary.length > 0) {
+      if (clampedX !== lastX || clampedY !== lastY) {
+        const oldTile = map[clampedY][clampedX];
+        if (oldTile !== selectedTileIndex) {
+          saveTileChange(clampedX, clampedY, oldTile, selectedTileIndex);
+          map[clampedY][clampedX] = selectedTileIndex;
+          lastX = clampedX;
+          lastY = clampedY;
+          drawMap();
+        }
+      }
+    } else if (selectionRect.isSelecting && editorMode === 'select') {
+      selectionRect.endX = clampedX;
+      selectionRect.endY = clampedY;
+      drawMap();
+    }
+  });
+
+  $(mapEditorCanvas).on('mousedown', function(e) {
+    $('#fileMenuContent').removeClass('show');
+    
+    const { x, y } = getMapCoordinates(e);
+    const clampedX = Math.max(0, Math.min(x, MapCols - 1));
+    const clampedY = Math.max(0, Math.min(y, MapRows - 1));
+    
+    updateCoordDisplay(clampedX, clampedY);
+    
+    if (clampedX >= 0 && clampedX < MapCols && clampedY >= 0 && clampedY < MapRows) {
+      if (editorMode === 'place' && tileLibrary.length > 0) {
+        const oldTile = map[clampedY][clampedX];
+        if (oldTile !== selectedTileIndex) {
+          saveTileChange(clampedX, clampedY, oldTile, selectedTileIndex);
+          map[clampedY][clampedX] = selectedTileIndex;
+          lastX = clampedX;
+          lastY = clampedY;
+          isDragging = true;
+          drawMap();
+        }
+        mouseDownTime = Date.now();
+      } else if (editorMode === 'select') {
+        selectionRect.startX = clampedX;
+        selectionRect.startY = clampedY;
+        selectionRect.endX = clampedX;
+        selectionRect.endY = clampedY;
+        selectionRect.isSelecting = true;
+        drawMap();
+      }
+    }
+  });
+
+  $(mapEditorCanvas).on('mouseup', function(e) {
+    if (isDragging) {
+      if (pendingTileChanges.length > 0) {
+        savePendingTileChanges();
+      }
+    }
+    isDragging = false;
+    selectionRect.isSelecting = false;
+    
+    if (Date.now() - mouseDownTime < 200 && editorMode === 'place') {
+      if (pendingTileChanges.length > 0) {
+        savePendingTileChanges();
+      }
+    }
+  });
+
+  $(mapEditorCanvas).on('mouseleave', function() {
+    if (isDragging && pendingTileChanges.length > 0) {
+      savePendingTileChanges();
+    }
+    isDragging = false;
+    selectionRect.isSelecting = false;
+  });
+
+  // Import PNG for Map Editor
+  $('#importTileForMap').on('change', function(e) {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    
+    const existingTileNames = new Set(tileLibrary.map(tile => tile.name));
+    const newFiles = [];
+    const duplicateFiles = [];
+    
+    files.forEach(file => {
+      if (existingTileNames.has(file.name)) {
+        duplicateFiles.push(file.name);
+      } else {
+        newFiles.push(file);
+      }
+    });
+    
+    if (duplicateFiles.length > 0) {
+      const msg = `Found ${duplicateFiles.length} duplicate file(s):\n${duplicateFiles.slice(0, 5).join('\n')}${duplicateFiles.length > 5 ? '\n...' : ''}\n\nSkip duplicates and continue importing ${newFiles.length} new files?`;
+      if (!confirm(msg)) {
+        this.value = '';
+        return;
+      }
+    }
+    
+    if (newFiles.length === 0) {
+      alert('All selected files are already imported.');
+      this.value = '';
+      return;
+    }
+    
+    if (tileLibrary.length + newFiles.length > MAX_TILES) {
+      alert(`Cannot import ${newFiles.length} tiles. Maximum limit is ${MAX_TILES} tiles (000-1999).\nCurrent: ${tileLibrary.length}/${MAX_TILES}`);
+      this.value = '';
+      return;
+    }
+    
+    const tileCountBeforeImport = tileLibrary.length;
+    const batchInfo = {
+      timestamp: new Date().toISOString(),
+      files: [],
+      tileIndices: []
+    };
+    
+    let loadedCount = 0;
+    
+    newFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+          const tileCanvas = document.createElement('canvas');
+          tileCanvas.width = OriginalTileSize;
+          tileCanvas.height = OriginalTileSize;
+          const tileCtx = tileCanvas.getContext('2d');
+          tileCtx.drawImage(img, 0, 0, OriginalTileSize, OriginalTileSize);
+          
+          const tileIndex = tileLibrary.length;
+          batchInfo.files.push(file.name);
+          batchInfo.tileIndices.push(tileIndex);
+          
+          tileLibrary.push({
+            image: img,
+            name: file.name,
+            canvas: tileCanvas,
+            originalIndex: tileIndex,
+            importedAt: new Date().toISOString()
+          });
+          
+          loadedCount++;
+          
+          if (loadedCount === newFiles.length) {
+            tileImportHistory.push({
+              ...batchInfo,
+              tileCountBefore: tileCountBeforeImport,
+              tileCountAfter: tileLibrary.length
+            });
+            
+            selectedTileIndices.clear();
+            if (tileLibrary.length > 0) {
+              selectedTileIndex = tileCountBeforeImport;
+              selectedTileIndices.add(selectedTileIndex);
+            }
+            
+            updateTileGrid();
+            drawMap();
+            
+            if (history.length === 0) {
+              saveToHistory('Initial State');
+            }
+            
+            $('#removeLastTilesBtn').prop('disabled', false);
+            setTimeout(saveToLocalStorage, 100);
+            $('#importTileForMap').val('');
+            
+            // let message = `Added ${newFiles.length} new tile(s). Total: ${tileLibrary.length}/${MAX_TILES}`;
+            // if (duplicateFiles.length > 0) {
+            //   message += `\n(Skipped ${duplicateFiles.length} duplicate(s))`;
+            // }
+            // alert(message);
+          }
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+
+  // Import Map from TXT (fallback)
+  $('#importMapTXT').on('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (tileLibrary.length === 0) {
+      alert('Please import some tiles first before loading a map!');
+      return;
+    }
+    
+    // Without File System Access API, we can't get file handle
+    // So Save button will remain disabled
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      const text = evt.target.result;
+      
+      // Parse and load map data
+      loadMapFromText(text);
+      
+      // Update status (but save button remains disabled without file handle)
+      updateMapFileStatus();
+      updateSaveButtonState();
+      
+      // Show warning about save functionality
+      alert(`Map imported from ${file.name}\n\nNote: "Save" button is disabled. Use "Save Map as TXT" to save changes.`);
+    };
+    reader.readAsText(file);
+  });
+
+  // Prevent menu from closing when clicking inside it
+  $('#fileMenuContent').on('click', function(e) {
+    e.stopPropagation();
+  });
+  
+  // Initialize save button state
+  updateSaveButtonState();
+  
+  // Initialize map info display
+  $('#mapInfo').text(`Map: ${MapCols}×${MapRows}`);
+  updateTileCount();
+  updateSelectedInfo();
+  updateUndoRedoButtons();
+  updateClearButtonState();
+}
+
 $(document).ready(function() {
   initMapEditorCanvas();
   updateMapCanvasSize();
@@ -777,15 +1575,20 @@ $(document).ready(function() {
   initDragAndDrop();
   setupCustomScrollbar();
 
-  // Show loading message
-  console.log('Starting initialization...');
+  console.log('Starting map editor initialization...');
+  
+  // Check File System Access API availability
+  if (isFileSystemAccessAPIAvailable()) {
+    console.log('✅ File System Access API is available');
+  } else {
+    console.log('⚠️ File System Access API not available, using fallback');
+  }
   
   // Try to load from localStorage first
   console.log('Attempting to load from localStorage...');
   const loadPromise = loadFromLocalStorage();
   
   if (loadPromise && loadPromise.then) {
-    // Handle async loading
     loadPromise.then((loaded) => {
       if (!loaded || tileLibrary.length === 0) {
         initializeDefaultUI();
@@ -797,47 +1600,139 @@ $(document).ready(function() {
       completeInitialization();
     });
   } else {
-    // Sync loading or no data
     if (!loadPromise || tileLibrary.length === 0) {
       initializeDefaultUI();
     }
     completeInitialization();
   }
-  // Add to your existing JavaScript
-function setupCustomScrollbar() {
-  const centerGroup = document.querySelector('.control-group:nth-child(2)');
-  if (!centerGroup) return;
-  
-  let scrollTimeout;
-  
-  centerGroup.addEventListener('scroll', function() {
-    // Show scrollbar when scrolling
-    this.classList.add('scrolling');
+
+  // Add keyboard shortcuts
+  $(document).on('keydown', function(e) {
+    // Ctrl+S for save (only works if file handle exists)
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      if (currentFileHandle) {
+        saveMap();
+      } else {
+        alert('No map file open. Use "Save Map as TXT" first.');
+      }
+    }
     
-    // Clear previous timeout
-    clearTimeout(scrollTimeout);
+    // Ctrl+Shift+S for save as (always works)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
+      e.preventDefault();
+      saveMapAsTXT();
+    }
     
-    // Hide scrollbar after 1 second of inactivity
-    scrollTimeout = setTimeout(() => {
-      this.classList.remove('scrolling');
-    }, 1000);
+    // Close file menu on Escape
+    else if (e.key === 'Escape') {
+      $('#fileMenuContent').removeClass('show');
+      
+      // Clear selection rectangle if in select mode
+      if (editorMode === 'select') {
+        clearSelection();
+        drawMap();
+      }
+      
+      // Also deselect tiles
+      selectedTileIndices.clear();
+      if (tileLibrary.length > 0) {
+        selectedTileIndex = 0;
+        selectedTileIndices.add(0);
+      }
+      updateTileGrid();
+    }
+    
+    // Ctrl+Z for undo
+    else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+    }
+    
+    // Ctrl+Y or Ctrl+Shift+Z for redo
+    else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+      e.preventDefault();
+      redo();
+    }
+    
+    // Delete key to clear selected tile
+    else if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (editorMode === 'place' && tileLibrary.length > 0) {
+        selectedTileIndex = -1;
+        selectedTileIndices.clear();
+        updateTileGrid();
+      }
+    }
+    
+    // G key to toggle grid
+    else if (e.key === 'g' || e.key === 'G') {
+      e.preventDefault();
+      toggleGrid();
+    }
+    
+    // F key to toggle fit to screen
+    else if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      isFitToScreen = !isFitToScreen;
+      if (isFitToScreen) {
+        TileScale = 0;
+      } else {
+        TileScale = TileScale === 0 ? 1 : TileScale;
+      }
+      updateMapCanvasSize();
+    }
+    
+    // Ctrl+F to fill selection
+    else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      e.preventDefault();
+      if (editorMode === 'select' && 
+          selectionRect.startX >= 0 && selectionRect.startY >= 0 &&
+          selectionRect.endX >= 0 && selectionRect.endY >= 0 &&
+          selectedTileIndex >= 0) {
+        fillSelectionWithTile();
+        drawMap();
+      }
+    }
   });
+
+  // Handle window resize
+  $(window).on('resize', handleResize);
+
+  // Initial display updates
+  updateTileGrid();
+  drawMap();
+  updateTileCount();
+  updateSelectedInfo();
+  updateUndoRedoButtons();
+  updateHistoryStatus();
+  updateClearButtonState();
+  showStorageUsage();
+  updateSaveButtonState();
+  updateMapFileStatus();
+  updateViewInfo();
+  updateZoomDisplay();
+  updateGridStatus();
+
+  // Set initial canvas cursor
+  if (mapEditorCanvas) {
+    mapEditorCanvas.style.cursor = editorMode === 'place' ? 'crosshair' : 'cell';
+  }
+
+  // Set up auto-save
+  setupAutoSave();
+  setupBeforeUnload();
+
+  console.log('Map editor initialization complete!');
   
-  // Also show on hover
-  centerGroup.addEventListener('mouseenter', function() {
-    this.classList.add('hovering');
-  });
-  
-  centerGroup.addEventListener('mouseleave', function() {
-    this.classList.remove('hovering');
-  });
-}
-  
-  // Helper functions
+  // Helper functions for initialization
   function initializeDefaultUI() {
     console.log('Initializing default UI...');
+    
+    // Update UI states
     updateGridStatus();
     $('#gridToggleBtn').toggleClass('active', showGrid);
+    $('#modePlace').toggleClass('active', editorMode === 'place');
+    $('#modeSelect').toggleClass('active', editorMode === 'select');
     
     // Auto-select first tile if available
     if (tileLibrary.length > 0) {
@@ -850,52 +1745,56 @@ function setupCustomScrollbar() {
     saveToHistory('Initial State');
   }
   
-// In the completeInitialization() function, add:
-function completeInitialization() {
-  console.log('Completing initialization...');
-  
-  // Set initial canvas cursor
-  mapEditorCanvas.style.cursor = editorMode === 'place' ? 'crosshair' : 'cell';
-  
-  drawMap();
-  
-  // Set up auto-save
-  setupAutoSave();
-  setupBeforeUnload();
-  
-  // Handle window resize
-  $(window).on('resize', handleResize);
-  
-  // Load saved tile sets from localStorage (separate from map data)
-  try {
-    const savedSets = localStorage.getItem('mapEditorTileSets');
-    if (savedSets) {
-      const loadedSets = JSON.parse(savedSets);
-      // Merge with any tile sets loaded from main save data
-      tileSets = { ...loadedSets, ...tileSets };
-      console.log(`Found ${Object.keys(tileSets).length} saved tile set(s)`);
+  function completeInitialization() {
+    console.log('Completing initialization...');
+    
+    // Load saved tile sets from localStorage (separate from map data)
+    try {
+      const savedSets = localStorage.getItem('mapEditorTileSets');
+      if (savedSets) {
+        const loadedSets = JSON.parse(savedSets);
+        // Merge with any tile sets loaded from main save data
+        tileSets = { ...loadedSets, ...tileSets };
+        console.log(`Found ${Object.keys(tileSets).length} saved tile set(s)`);
+      }
+    } catch (error) {
+      console.error('Error loading saved tile sets:', error);
     }
-  } catch (error) {
-    console.error('Error loading saved tile sets:', error);
+    
+    // Update UI elements based on loaded state
+    $('#modePlace').toggleClass('active', editorMode === 'place');
+    $('#modeSelect').toggleClass('active', editorMode === 'select');
+    $('#gridToggleBtn').toggleClass('active', showGrid);
+    
+    // Update displays
+    updateViewInfo();
+    updateZoomDisplay();
+    updateGridStatus();
+    
+    // Check if we have a file handle from localStorage
+    if (currentFileHandle === null) {
+      updateSaveButtonState(); // Ensure save button is disabled
+    }
+    
+    console.log('Editor initialization complete');
   }
-  
-  // Set initial status
-  updateViewInfo();
-  updateSelectedInfo();
-  updateTileCount();
-  updateUndoRedoButtons();
-  updateHistoryStatus();
-  updateTileAreaDisplay();
-  
-  // Initialize grid status display
-  updateGridStatus();
-  
-  // Initialize storage info
-  showStorageUsage();
-  
-  console.log('Initialization complete');
-}
 });
+
+// Add CSS for disabled button
+const disabledButtonStyle = document.createElement('style');
+disabledButtonStyle.textContent = `
+.file-menu-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.file-menu-item.disabled:hover {
+  background-color: transparent;
+}
+`;
+document.head.appendChild(disabledButtonStyle);
+
 // Auto-save function (call this periodically)
 let autoSaveTimer = null;
 function setupAutoSave() {
@@ -1693,681 +2592,6 @@ function loadTileSet() {
   }
 }
 
-// === Event Listeners ===
-function initEventListeners() {
-  // File Menu functionality - FIXED VERSION
-  $('#fileMenuBtn').on('click', function(e) {
-    e.stopPropagation();
-    e.preventDefault();
-    
-    const menu = $('#fileMenuContent');
-    const isVisible = menu.hasClass('show');
-    
-    // Position the menu relative to the button
-    const btnRect = this.getBoundingClientRect();
-    menu.css({
-      position: 'fixed',
-      top: btnRect.bottom + 4 + 'px',
-      left: btnRect.left + 'px'
-    });
-    
-    if (!isVisible) {
-      // Close all other menus first
-      $('.file-menu-content').removeClass('show');
-      
-      // Show this menu
-      menu.addClass('show');
-      
-      // Add click handler to close when clicking outside
-      const closeHandler = function(event) {
-        if (!menu.is(event.target) && menu.has(event.target).length === 0 &&
-            !$('#fileMenuBtn').is(event.target) && $('#fileMenuBtn').has(event.target).length === 0) {
-          menu.removeClass('show');
-          $(document).off('click', closeHandler);
-        }
-      };
-      
-      // Wait for the current event to finish before adding the handler
-      setTimeout(() => {
-        $(document).on('click', closeHandler);
-      }, 0);
-    } else {
-      menu.removeClass('show');
-      // Remove any existing click handlers
-      $(document).off('click.fileMenuClose');
-    }
-  });
-  $('#saveSessionBtn').on('click', function() {
-    if (saveToLocalStorage()) {
-      alert('Session saved successfully!');
-    } else {
-      alert('Error saving session.');
-    }
-  });
-  
-  $('#loadSessionBtn').on('click', function() {
-    if (confirm('Load last saved session? Current unsaved changes will be lost.')) {
-      loadFromLocalStorage();
-      updateClearButtonState();
-    }
-  });
-  
-  $('#clearSessionBtn').on('click', clearLocalStorage);
-  // Fill Selection button
-  $('#fillSelectionBtn').on('click', function() {
-    if (selectionRect.startX < 0 || selectionRect.startY < 0 || 
-        selectionRect.endX < 0 || selectionRect.endY < 0) {
-      alert('Please select an area first by clicking and dragging in Select mode.');
-      return;
-    }
-    
-    if (tileLibrary.length === 0) {
-      alert('No tiles imported. Please import tiles first.');
-      return;
-    }
-    
-    if (selectedTileIndex < 0) {
-      alert('No tile selected. Please select a tile first.');
-      return;
-    }
-    
-    fillSelectionWithTile();
-    drawMap();
-  });
-  
-  // Prevent menu from closing when clicking inside it
-  $('#fileMenuContent').on('click', function(e) {
-    e.stopPropagation();
-  });
-  
-  // File menu items
-  $('#menuImportTiles').on('click', function(e) {
-    e.stopPropagation();
-    $('#fileMenuContent').removeClass('show');
-    setTimeout(() => {
-      $('#importTileForMap').click();
-    }, 50);
-  });
-  
-  $('#menuImportMap').on('click', function(e) {
-    e.stopPropagation();
-    $('#fileMenuContent').removeClass('show');
-    setTimeout(() => {
-      $('#importMapTXT').click();
-    }, 50);
-  });
-  
-  $('#menuSaveMap').on('click', function(e) {
-    e.stopPropagation();
-    $('#fileMenuContent').removeClass('show');
-    setTimeout(() => {
-      saveMapAsTXT();
-    }, 50);
-  });
-  
-  $('#menuExportImage').on('click', function(e) {
-    e.stopPropagation();
-    $('#fileMenuContent').removeClass('show');
-    setTimeout(() => {
-      exportMapAsPNG();
-    }, 50);
-  });
-  
-  $('#menuClearMap').on('click', function(e) {
-    e.stopPropagation();
-    $('#fileMenuContent').removeClass('show');
-    setTimeout(() => {
-      if (confirm('Clear the entire 50x50 map?')) {
-        // Save current state before clearing
-        saveToHistory('Clear Map');
-        
-        for (let y = 0; y < MapRows; y++) {
-          for (let x = 0; x < MapCols; x++) {
-            map[y][x] = -1;
-          }
-        }
-        drawMap();
-      }
-    }, 50);
-  });
-  
-  // Tile Management buttons
-  $('#saveTileSetBtn').on('click', saveTileSet);
-  $('#loadTileSetBtn').on('click', loadTileSet);
-  $('#removeLastTilesBtn').on('click', removeLastImportedTiles).prop('disabled', true);
-  
-  // Grid toggle button
-  $('#gridToggleBtn').on('click', toggleGrid);
-  
-  // Import tiles button
-  $('#importTilesBtn').on('click', function() {
-    $('#importTileForMap').click();
-  });
-  
-  // Deselect All button
-  $('#deselectAllBtn').on('click', function() {
-    selectedTileIndices.clear();
-    if (tileLibrary.length > 0) {
-      selectedTileIndex = 0;
-      selectedTileIndices.add(0);
-    }
-    updateTileGrid();
-  });
-  
-  // Undo/Redo buttons
-  $('#undoBtn').on('click', function() {
-    undo();
-  });
-  
-  $('#redoBtn').on('click', function() {
-    redo();
-  });
-  
-  // === Map Editor Event Listeners ===
-  let isDragging = false;
-  let lastX = -1, lastY = -1;
-  let mouseDownTime = 0;
-
-  function updateCoordDisplay(x, y) {
-    $('#coordDisplay').text(`X:${x} Y:${y}`);
-  }
-
-  function getMapCoordinates(e) {
-    const rect = mapEditorCanvas.getBoundingClientRect();
-    
-    // Get mouse position relative to viewport
-    const mouseX = e.clientX;
-    const mouseY = e.clientY;
-    
-    // Calculate position relative to canvas (accounting for border)
-    const canvasX = mouseX - rect.left;
-    const canvasY = mouseY - rect.top;
-    
-    // Get the effective tile scale
-    const effectiveTileScale = isFitToScreen && TileScale === 0 ? calculateFitZoom() : TileScale;
-    const scaledTileSize = OriginalTileSize * effectiveTileScale;
-    
-    // Calculate grid coordinates
-    const x = Math.floor(canvasX / scaledTileSize);
-    const y = Math.floor(canvasY / scaledTileSize);
-    
-    return { x, y };
-  }
-
-  $(mapEditorCanvas).on('mousemove', function(e) {
-    const { x, y } = getMapCoordinates(e);
-    
-    // Clamp to map bounds
-    const clampedX = Math.max(0, Math.min(x, MapCols - 1));
-    const clampedY = Math.max(0, Math.min(y, MapRows - 1));
-    
-    // Update coordinate display
-    updateCoordDisplay(clampedX, clampedY);
-    
-    if (isDragging && editorMode === 'place' && tileLibrary.length > 0) {
-      // Only update if we moved to a different cell
-      if (clampedX !== lastX || clampedY !== lastY) {
-        // Check if tile actually changed
-        const oldTile = map[clampedY][clampedX];
-        if (oldTile !== selectedTileIndex) {
-          // Save tile change for undo
-          saveTileChange(clampedX, clampedY, oldTile, selectedTileIndex);
-          
-          map[clampedY][clampedX] = selectedTileIndex;
-          lastX = clampedX;
-          lastY = clampedY;
-          drawMap();
-        }
-      }
-    } else if (selectionRect.isSelecting && editorMode === 'select') {
-      selectionRect.endX = clampedX;
-      selectionRect.endY = clampedY;
-      drawMap();
-    } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-      e.preventDefault();
-      if (editorMode === 'select' && 
-          selectionRect.startX >= 0 && selectionRect.startY >= 0 &&
-          selectionRect.endX >= 0 && selectionRect.endY >= 0 &&
-          selectedTileIndex >= 0) {
-        fillSelectionWithTile();
-        drawMap();
-      }
-    }
-  });
-
-  $(mapEditorCanvas).on('mousedown', function(e) {
-    // Close file menu if open
-    $('#fileMenuContent').removeClass('show');
-    
-    const { x, y } = getMapCoordinates(e);
-    
-    // Clamp to map bounds
-    const clampedX = Math.max(0, Math.min(x, MapCols - 1));
-    const clampedY = Math.max(0, Math.min(y, MapRows - 1));
-    
-    // Update coordinate display
-    updateCoordDisplay(clampedX, clampedY);
-    
-    if (clampedX >= 0 && clampedX < MapCols && clampedY >= 0 && clampedY < MapRows) {
-      if (editorMode === 'place' && tileLibrary.length > 0) {
-        const oldTile = map[clampedY][clampedX];
-        if (oldTile !== selectedTileIndex) {
-          // Save tile change for undo
-          saveTileChange(clampedX, clampedY, oldTile, selectedTileIndex);
-          
-          map[clampedY][clampedX] = selectedTileIndex;
-          lastX = clampedX;
-          lastY = clampedY;
-          isDragging = true;
-          drawMap();
-        }
-        mouseDownTime = Date.now();
-      } else if (editorMode === 'select') {
-        selectionRect.startX = clampedX;
-        selectionRect.startY = clampedY;
-        selectionRect.endX = clampedX;
-        selectionRect.endY = clampedY;
-        selectionRect.isSelecting = true;
-        drawMap();
-      }
-    }
-  });
-
-  $(mapEditorCanvas).on('mouseup', function(e) {
-    if (isDragging) {
-      // Save pending tile changes as a batch when dragging stops
-      if (pendingTileChanges.length > 0) {
-        savePendingTileChanges();
-      }
-    }
-    isDragging = false;
-    selectionRect.isSelecting = false;
-    
-    // Check if it was a single click (not drag)
-    if (Date.now() - mouseDownTime < 200 && editorMode === 'place') {
-      // Save single click as a batch
-      if (pendingTileChanges.length > 0) {
-        savePendingTileChanges();
-      }
-    }
-  });
-
-  $(mapEditorCanvas).on('mouseleave', function() {
-    if (isDragging && pendingTileChanges.length > 0) {
-      savePendingTileChanges();
-    }
-    isDragging = false;
-    selectionRect.isSelecting = false;
-  });
-
-  // In the keyboard event handler, fix the 'G' key handler:
-  $(document).on('keydown', function(e) {
-    // Close file menu on Escape
-    if (e.key === 'Escape') {
-      $('#fileMenuContent').removeClass('show');
-      
-      // Clear selection rectangle if in select mode
-      if (editorMode === 'select') {
-        clearSelection();
-        drawMap();
-      }
-      
-      // Also deselect tiles
-      selectedTileIndices.clear();
-      if (tileLibrary.length > 0) {
-        selectedTileIndex = 0;
-        selectedTileIndices.add(0);
-      }
-      updateTileGrid();
-    }
-    
-    // Ctrl+Z for undo
-    else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-      e.preventDefault();
-      undo();
-    }
-    
-    // Ctrl+Y or Ctrl+Shift+Z for redo
-    else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-      e.preventDefault();
-      redo();
-    }
-    
-    // Delete key to clear selected tile
-    else if (e.key === 'Delete' || e.key === 'Backspace') {
-      if (editorMode === 'place' && tileLibrary.length > 0) {
-        selectedTileIndex = -1;
-        selectedTileIndices.clear();
-        updateTileGrid();
-      }
-    }
-    
-    // G key to toggle grid - FIXED
-    else if (e.key === 'g' || e.key === 'G') {
-      e.preventDefault();
-      toggleGrid();
-      // updateGridStatus(); // Already called in toggleGrid()
-    }
-    
-    // F key to toggle fit to screen - FIXED
-    else if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey) {
-      e.preventDefault();
-      isFitToScreen = !isFitToScreen;
-      if (isFitToScreen) {
-        TileScale = 0;
-      } else {
-        TileScale = TileScale === 0 ? 1 : TileScale;
-      }
-      updateMapCanvasSize();
-    }
-    
-    // Ctrl+F to fill selection
-    else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-      e.preventDefault();
-      if (editorMode === 'select' && 
-          selectionRect.startX >= 0 && selectionRect.startY >= 0 &&
-          selectionRect.endX >= 0 && selectionRect.endY >= 0 &&
-          selectedTileIndex >= 0) {
-        fillSelectionWithTile();
-        drawMap();
-      }
-    }
-  });
-
-
-  // Zoom Functions
-  $('#zoomInBtn').on('click', function() {
-    isFitToScreen = false;
-    if (TileScale < MAX_TileScale) {
-      TileScale = TileScale === 0 ? 1 : TileScale + 1;
-      updateMapCanvasSize();
-      updateGridStatus();
-    }
-  });
-
-  $('#zoomOutBtn').on('click', function() {
-    isFitToScreen = false;
-    if (TileScale > MIN_TileScale) {
-      TileScale--;
-      updateMapCanvasSize();
-      updateGridStatus();
-    }
-  });
-
-  $('#zoom1xBtn').on('click', function() {
-    isFitToScreen = false;
-    TileScale = 1;
-    updateMapCanvasSize();
-    updateGridStatus();
-  });
-
-  $('#fitMapBtn').on('click', function() {
-    isFitToScreen = true;
-    TileScale = 0;
-    updateMapCanvasSize();
-    updateGridStatus();
-  });
-
-  // Import PNG for Map Editor
-$('#importTileForMap').on('change', function(e) {
-  const files = Array.from(e.target.files);
-  if (files.length === 0) return;
-  
-  // Check for duplicates BEFORE importing
-  const existingTileNames = new Set(tileLibrary.map(tile => tile.name));
-  const newFiles = [];
-  const duplicateFiles = [];
-  
-  files.forEach(file => {
-    if (existingTileNames.has(file.name)) {
-      duplicateFiles.push(file.name);
-    } else {
-      newFiles.push(file);
-    }
-  });
-  
-  // Warn about duplicates
-  if (duplicateFiles.length > 0) {
-    const msg = `Found ${duplicateFiles.length} duplicate file(s):\n${duplicateFiles.slice(0, 5).join('\n')}${duplicateFiles.length > 5 ? '\n...' : ''}\n\nSkip duplicates and continue importing ${newFiles.length} new files?`;
-    if (!confirm(msg)) {
-      // Clear the file input
-      this.value = '';
-      return;
-    }
-  }
-  
-  if (newFiles.length === 0) {
-    alert('All selected files are already imported.');
-    // Clear the file input
-    this.value = '';
-    return;
-  }
-  
-  if (tileLibrary.length + newFiles.length > MAX_TILES) {
-    alert(`Cannot import ${newFiles.length} tiles. Maximum limit is ${MAX_TILES} tiles (000-1999).\nCurrent: ${tileLibrary.length}/${MAX_TILES}`);
-    // Clear the file input
-    this.value = '';
-    return;
-  }
-  
-  // Record current tile count before import
-  const tileCountBeforeImport = tileLibrary.length;
-  const batchInfo = {
-    timestamp: new Date().toISOString(),
-    files: [],
-    tileIndices: []
-  };
-  
-  let loadedCount = 0;
-  
-  newFiles.forEach((file, fileIndex) => {
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      const img = new Image();
-      img.onload = function() {
-        const tileCanvas = document.createElement('canvas');
-        tileCanvas.width = OriginalTileSize;
-        tileCanvas.height = OriginalTileSize;
-        const tileCtx = tileCanvas.getContext('2d');
-        
-        tileCtx.drawImage(img, 0, 0, OriginalTileSize, OriginalTileSize);
-        
-        // Store tile index where it will be added
-        const tileIndex = tileLibrary.length;
-        batchInfo.files.push(file.name);
-        batchInfo.tileIndices.push(tileIndex);
-        
-        tileLibrary.push({
-          image: img,
-          name: file.name,
-          canvas: tileCanvas,
-          originalIndex: tileIndex,
-          importedAt: new Date().toISOString()
-        });
-        
-        loadedCount++;
-        
-        if (loadedCount === newFiles.length) {
-          // Record the import batch
-          tileImportHistory.push({
-            ...batchInfo,
-            tileCountBefore: tileCountBeforeImport,
-            tileCountAfter: tileLibrary.length
-          });
-          
-          // Auto-select the first newly imported tile
-          selectedTileIndices.clear();
-          if (tileLibrary.length > 0) {
-            selectedTileIndex = tileCountBeforeImport; // Select first new tile
-            selectedTileIndices.add(selectedTileIndex);
-          }
-          
-          updateTileGrid();
-          drawMap();
-          
-          // Save initial state to history if needed
-          if (history.length === 0) {
-            saveToHistory('Initial State');
-          }
-          
-          // Enable remove last button
-          $('#removeLastTilesBtn').prop('disabled', false);
-          
-          // Auto-save to localStorage
-          setTimeout(saveToLocalStorage, 100);
-          
-          // Clear the file input
-          $('#importTileForMap').val('');
-          
-          // Show summary
-          let message = `Added ${newFiles.length} new tile(s). Total: ${tileLibrary.length}/${MAX_TILES}`;
-          if (duplicateFiles.length > 0) {
-            message += `\n(Skipped ${duplicateFiles.length} duplicate(s))`;
-          }
-          alert(message);
-        }
-      };
-      img.src = evt.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-});
-
-  // Import Map from TXT
-  $('#importMapTXT').on('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (tileLibrary.length === 0) {
-      alert('Please import some tiles first before loading a map!');
-      return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      const text = evt.target.result;
-      const lines = text.split('\n');
-      
-      // Save current state before importing
-      saveToHistory('Import Map');
-      
-      for (let y = 0; y < MapRows; y++) {
-        for (let x = 0; x < MapCols; x++) {
-          map[y][x] = -1;
-        }
-      }
-      
-      let readingMap = false;
-      let lineIndex = 0;
-      
-      for (const line of lines) {
-        const trimmed = line.trim();
-        
-        if (trimmed === '' || trimmed.startsWith('#')) {
-          continue;
-        }
-        
-        if (!readingMap) {
-          readingMap = true;
-        }
-        
-        if (readingMap && lineIndex < MapRows) {
-          const cells = trimmed.split(/\s+/);
-          for (let x = 0; x < Math.min(MapCols, cells.length); x++) {
-            const cell = cells[x];
-            if (cell === '.' || cell === '-1') {
-              map[lineIndex][x] = -1;
-            } else {
-              const tileIndex = parseInt(cell);
-              if (!isNaN(tileIndex) && tileIndex >= 0 && tileIndex < tileLibrary.length) {
-                map[lineIndex][x] = tileIndex;
-              } else {
-                map[lineIndex][x] = -1;
-              }
-            }
-          }
-          lineIndex++;
-          if (lineIndex >= MapRows) break;
-        }
-      }
-      
-      drawMap();
-      alert(`Map imported from ${file.name}`);
-    };
-    reader.readAsText(file);
-  });
-
-  // Editor Mode Buttons
-  // Editor Mode Buttons
-$('#modePlace').on('click', function() {
-  // Check if we're coming from Select mode with an active selection
-  const hadSelection = editorMode === 'select' && 
-    selectionRect.startX >= 0 && selectionRect.startY >= 0 &&
-    selectionRect.endX >= 0 && selectionRect.endY >= 0;
-  
-  editorMode = 'place';
-  $('#modePlace').addClass('active');
-  $('#modeSelect').removeClass('active');
-  
-  // Update canvas cursor
-  mapEditorCanvas.style.cursor = 'crosshair';
-  
-  // If we had a selection in Select mode, fill it with the selected tile
-  if (hadSelection && tileLibrary.length > 0 && selectedTileIndex >= 0) {
-    fillSelectionWithTile();
-  }
-  
-  // Clear selection rectangle when switching modes
-  clearSelection();
-  drawMap();
-});
-
-$('#modeSelect').on('click', function() {
-  editorMode = 'select';
-  $('#modeSelect').addClass('active');
-  $('#modePlace').removeClass('active');
-  // Update canvas cursor
-  mapEditorCanvas.style.cursor = 'cell';
-});
-
-  // Clear Selected Area Button
-  $('#clearSelectedAreaBtn').on('click', function() {
-    if (selectionRect.startX < 0 || selectionRect.startY < 0 || 
-        selectionRect.endX < 0 || selectionRect.endY < 0) {
-      alert('Please select an area first by clicking and dragging in Select mode.');
-      return;
-    }
-    
-    const x1 = Math.min(selectionRect.startX, selectionRect.endX);
-    const y1 = Math.min(selectionRect.startY, selectionRect.endY);
-    const x2 = Math.max(selectionRect.startX, selectionRect.endX);
-    const y2 = Math.max(selectionRect.startY, selectionRect.endY);
-    
-    if (confirm(`Clear ${x2-x1+1}×${y2-y1+1} area?`)) {
-      // Save state before clearing area
-      saveToHistory('Clear Area');
-      
-      for (let y = y1; y <= y2; y++) {
-        for (let x = x1; x <= x2; x++) {
-          if (x >= 0 && x < MapCols && y >= 0 && y < MapRows) {
-            map[y][x] = -1;
-          }
-        }
-      }
-      drawMap();
-    }
-  });
-  $('#clearSessionBtn').on('click', function() {
-    clearLocalStorage();
-  });
-  
-  // Initialize map info display
-  $('#mapInfo').text(`Map: ${MapCols}×${MapRows}`);
-  updateTileCount();
-  updateSelectedInfo();
-  updateUndoRedoButtons();
-  updateClearButtonState();
-}
 function updateClearButtonState() {
   const clearBtn = $('#clearSessionBtn');
   if (clearBtn.length) {
@@ -2432,13 +2656,7 @@ function fillSelectionWithTile() {
   
   // Clear selection after filling
   clearSelection();
-  
-  // Show feedback
-  // if (changedCells > 0) {
-  //   alert(`Filled ${changedCells} cells with tile ${selectedTileIndex}`);
-  // } else {
-  //   alert('No changes made - area already contains the selected tile.');
-  // }
+
 }
 
 // Clear selection rectangle
@@ -2449,33 +2667,6 @@ function clearSelection() {
   selectionRect.endY = -1;
   selectionRect.isSelecting = false;
   $('#selectionInfo').removeClass('show');
-}
-function saveMapAsTXT() {
-  if (tileLibrary.length === 0) {
-    alert('No tiles imported yet. Please import some tiles first.');
-    return;
-  }
-  
-  let content = '';
-  
-  for (let y = 0; y < MapRows; y++) {
-    const row = [];
-    for (let x = 0; x < MapCols; x++) {
-      const tileIndex = map[y][x];
-      row.push(tileIndex >= 0 ? tileIndex.toString() : '.');
-    }
-    content += row.join(' ') + '\n';
-  }
-  
-  const blob = new Blob([content], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `map_${MapCols}x${MapRows}_${new Date().toISOString().slice(0,10)}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 function exportMapAsPNG() {
@@ -2524,7 +2715,6 @@ function exportMapAsPNG() {
   });
 }
 
-// === Window Resize Handler ===
 function handleResize() {
   if (isFitToScreen) {
     updateMapCanvasSize();
@@ -2655,7 +2845,6 @@ function initDragAndDrop() {
 }
 
 // === Auto-save feature (optional) ===
-// Auto-save every 2 minutes
 setInterval(() => {
   if (history.length > 0 && historyIndex === history.length - 1 && tileLibrary.length > 0) {
     saveTileSetAuto();
