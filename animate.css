@@ -186,7 +186,29 @@ h3 {
     background: var(--bg-canvas);
     cursor: crosshair;
     display: block;
+    margin: 0 auto var(--spacing-lg) auto; /* Center horizontally */
+    box-shadow: var(--shadow-heavy);
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    flex-shrink: 0; /* Prevent canvas from shrinking */
+}
+
+/* Or if you want more control, you can wrap it in a container: */
+
+.canvas-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     margin-bottom: var(--spacing-lg);
+}
+
+#mainCanvas {
+    width: var(--canvas-size);
+    height: var(--canvas-size);
+    border: var(--canvas-border) solid var(--border-primary);
+    border-radius: var(--border-radius-lg);
+    background: var(--bg-canvas);
+    cursor: crosshair;
     box-shadow: var(--shadow-heavy);
     image-rendering: pixelated;
     image-rendering: crisp-edges;
@@ -280,7 +302,7 @@ button.success:hover:not(:disabled) {
 /* Color Palette */
 .color-palette {
     display: grid;
-    grid-template-columns: repeat(8, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: var(--spacing-sm);
     margin: var(--spacing-md) 0;
     flex-shrink: 0; /* Prevent palette from shrinking */
@@ -356,7 +378,7 @@ input[type="color"]:hover {
 
 input[type="number"], 
 input[type="text"] {
-    width: 100%;
+    width: 75%;
     padding: var(--spacing-sm) var(--spacing-md);
     border: 1px solid var(--border-secondary);
     border-radius: var(--border-radius-sm);
@@ -517,14 +539,14 @@ label {
 /* Tools */
 .tools {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--spacing-sm);
     margin: var(--spacing-sm) 0;
-    flex-shrink: 0; /* Prevent tools from shrinking */
+    flex-shrink: 0;
 }
 
 .tool-btn {
-    padding: var(--spacing-sm);
+    padding: var(--spacing-xs);
     font-size: var(--font-size-sm);
     min-height: 44px;
     display: flex;
@@ -708,7 +730,7 @@ label {
     }
     
     .color-palette {
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(5, 2fr);
         gap: var(--spacing-sm);
     }
     

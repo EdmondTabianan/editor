@@ -22,7 +22,7 @@ export class SpriteEditorUI {
         this.mainCanvas.width = CANVAS_SIZE;
         this.mainCanvas.height = CANVAS_SIZE;
         
-        // UI Elements
+        // UI Elements - with null checks
         this.elements = {
             frameIndex: document.getElementById('frameIndex'),
             frameCount: document.getElementById('frameCount'),
@@ -40,6 +40,13 @@ export class SpriteEditorUI {
             toggleGridBtn: document.getElementById('toggleGridBtn'),
             toggleCheckerboardBtn: document.getElementById('toggleCheckerboardBtn')
         };
+
+        // Log missing elements for debugging
+        Object.entries(this.elements).forEach(([key, element]) => {
+            if (!element) {
+                console.warn(`UI element not found: ${key}`);
+            }
+        });
     }
 
     drawFrame() {
@@ -75,9 +82,6 @@ export class SpriteEditorUI {
         
         // Draw pixels
         const frame = this.state.frames[this.state.currentFrame];
-        console.log('Frame to draw:', frame);
-        
-        let pixelsDrawn = 0;
         for (let y = 0; y < PIXEL_SIZE; y++) {
             for (let x = 0; x < PIXEL_SIZE; x++) {
                 const colorIndex = frame[y][x];
@@ -91,13 +95,11 @@ export class SpriteEditorUI {
                             CANVAS_SCALE - 2,
                             CANVAS_SCALE - 2
                         );
-                        pixelsDrawn++;
                     }
                 }
             }
         }
         
-        console.log(`Pixels drawn: ${pixelsDrawn}`);
         this.updateStatusBar();
     }
 
@@ -147,6 +149,11 @@ export class SpriteEditorUI {
 
     updateFrameThumbnails() {
         const container = this.elements.frameThumbnails;
+        if (!container) {
+            console.error('frameThumbnails element not found');
+            return;
+        }
+        
         container.innerHTML = '';
         
         this.state.frames.forEach((frame, index) => {
@@ -181,6 +188,11 @@ export class SpriteEditorUI {
 
     updateColorPalette() {
         const container = this.elements.colorPalette;
+        if (!container) {
+            console.error('colorPalette element not found');
+            return;
+        }
+        
         container.innerHTML = '';
         
         this.state.palette.forEach((color, index) => {
@@ -225,6 +237,8 @@ export class SpriteEditorUI {
     
     // Helper function to determine text color for contrast
     getContrastColor(hexColor) {
+        if (!hexColor || hexColor === 'transparent') return '#FFFFFF';
+        
         // Convert hex to RGB
         const r = parseInt(hexColor.substr(1, 2), 16);
         const g = parseInt(hexColor.substr(3, 2), 16);
@@ -238,15 +252,34 @@ export class SpriteEditorUI {
     }
 
     updateStatusBar() {
-        this.elements.frameIndex.textContent = this.state.currentFrame;
-        this.elements.frameCount.textContent = this.state.frames.length - 1;
-        this.elements.currentTool.textContent = this.state.currentTool.charAt(0).toUpperCase() + this.state.currentTool.slice(1);
-        this.elements.currentColor.textContent = this.state.palette[this.state.currentColor];
-        this.elements.brushSizeDisplay.textContent = `${this.state.brushSize}×${this.state.brushSize}`;
+        // Safe updates with null checks
+        if (this.elements.frameIndex) {
+            this.elements.frameIndex.textContent = this.state.currentFrame;
+        }
+        
+        if (this.elements.frameCount) {
+            this.elements.frameCount.textContent = this.state.frames.length - 1;
+        }
+        
+        if (this.elements.currentTool) {
+            this.elements.currentTool.textContent = this.state.currentTool.charAt(0).toUpperCase() + this.state.currentTool.slice(1);
+        }
+        
+        if (this.elements.currentColor) {
+            this.elements.currentColor.textContent = this.state.palette[this.state.currentColor] || '#000000';
+        }
+        
+        if (this.elements.brushSizeDisplay) {
+            this.elements.brushSizeDisplay.textContent = `${this.state.brushSize}×${this.state.brushSize}`;
+        }
         
         // Update tool buttons
         document.querySelectorAll('.tool-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tool === this.state.currentTool);
+            if (btn.dataset.tool === this.state.currentTool) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
         });
     }
 
@@ -301,10 +334,12 @@ export class SpriteEditorUI {
     }
 
     async addColorFromInput() {
-        const color = this.elements.colorInput.value;
+        const color = this.elements.colorInput ? this.elements.colorInput.value : '#000000';
         try {
             this.state.addColor(color);
-            this.elements.colorPicker.value = color;
+            if (this.elements.colorPicker) {
+                this.elements.colorPicker.value = color;
+            }
             this.updateColorPalette();
             this.saveState();
             this.showAlert('Color added successfully', 'success');
@@ -324,7 +359,9 @@ export class SpriteEditorUI {
         this.drawFrame();
         this.saveState();
         const button = this.elements.toggleGridBtn;
-        button.textContent = this.state.showGrid ? 'Hide Grid' : 'Show Grid';
+        if (button) {
+            button.textContent = this.state.showGrid ? 'Hide Grid' : 'Show Grid';
+        }
         this.showAlert(`Grid ${this.state.showGrid ? 'shown' : 'hidden'}`, 'info');
     }
 
@@ -333,7 +370,9 @@ export class SpriteEditorUI {
         this.drawFrame();
         this.saveState();
         const button = this.elements.toggleCheckerboardBtn;
-        button.textContent = this.state.showCheckerboard ? 'Solid Background' : 'Checkerboard';
+        if (button) {
+            button.textContent = this.state.showCheckerboard ? 'Solid Background' : 'Checkerboard';
+        }
         this.showAlert(`Checkerboard ${this.state.showCheckerboard ? 'enabled' : 'disabled'}`, 'info');
     }
 }

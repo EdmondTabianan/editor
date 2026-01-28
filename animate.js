@@ -11,16 +11,15 @@ class SpriteEditorApp {
         this.startX = -1;
         this.startY = -1;
         
-        // Store constants locally
-        this.PIXEL_SIZE = PIXEL_SIZE;
-        this.CANVAS_SCALE = CANVAS_SCALE;
-        
         this.init();
     }
 
     init() {
+        console.log('Initializing Sprite Editor...');
+        
         // Load saved state or initialize
         if (!this.state.loadFromLocalStorage()) {
+            console.log('No saved state found, initializing empty state');
             this.state.initEmptyState();
         }
         
@@ -32,8 +31,14 @@ class SpriteEditorApp {
         this.ui.updateFrameThumbnails();
         this.ui.drawFrame();
         
-        // Update display option buttons
-        this.updateDisplayButtons();
+        // Update display option buttons if they exist
+        if (this.ui.elements.toggleGridBtn) {
+            this.ui.elements.toggleGridBtn.textContent = this.state.showGrid ? 'Hide Grid' : 'Show Grid';
+        }
+        
+        if (this.ui.elements.toggleCheckerboardBtn) {
+            this.ui.elements.toggleCheckerboardBtn.textContent = this.state.showCheckerboard ? 'Solid Background' : 'Checkerboard';
+        }
         
         // Auto-save on unload
         window.addEventListener('beforeunload', () => {
@@ -44,9 +49,13 @@ class SpriteEditorApp {
         setInterval(() => {
             this.state.saveToLocalStorage();
         }, 30000);
+        
+        console.log('Sprite Editor initialized successfully');
     }
 
     setupEventListeners() {
+        console.log('Setting up event listeners...');
+        
         // Canvas events
         this.ui.mainCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         this.ui.mainCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
@@ -63,50 +72,107 @@ class SpriteEditorApp {
         });
         
         // Brush size
-        this.ui.elements.brushSize.addEventListener('input', (e) => {
-            this.state.brushSize = parseInt(e.target.value);
-            this.ui.updateStatusBar();
-            this.state.saveToLocalStorage();
-        });
+        if (this.ui.elements.brushSize) {
+            this.ui.elements.brushSize.addEventListener('input', (e) => {
+                this.state.brushSize = parseInt(e.target.value);
+                this.ui.updateStatusBar();
+                this.state.saveToLocalStorage();
+            });
+        }
         
         // Frame controls
-        document.getElementById('addFrameBtn').addEventListener('click', () => this.addFrame(false));
-        document.getElementById('duplicateFrameBtn').addEventListener('click', () => this.duplicateFrame());
-        document.getElementById('deleteFrameBtn').addEventListener('click', () => this.deleteFrame());
-        document.getElementById('prevFrameBtn').addEventListener('click', () => this.prevFrame());
-        document.getElementById('nextFrameBtn').addEventListener('click', () => this.nextFrame());
+        const addFrameBtn = document.getElementById('addFrameBtn');
+        if (addFrameBtn) {
+            addFrameBtn.addEventListener('click', () => this.addFrame(false));
+        }
+        
+        const duplicateFrameBtn = document.getElementById('duplicateFrameBtn');
+        if (duplicateFrameBtn) {
+            duplicateFrameBtn.addEventListener('click', () => this.duplicateFrame());
+        }
+        
+        const deleteFrameBtn = document.getElementById('deleteFrameBtn');
+        if (deleteFrameBtn) {
+            deleteFrameBtn.addEventListener('click', () => this.deleteFrame());
+        }
+        
+        const prevFrameBtn = document.getElementById('prevFrameBtn');
+        if (prevFrameBtn) {
+            prevFrameBtn.addEventListener('click', () => this.prevFrame());
+        }
+        
+        const nextFrameBtn = document.getElementById('nextFrameBtn');
+        if (nextFrameBtn) {
+            nextFrameBtn.addEventListener('click', () => this.nextFrame());
+        }
         
         // Animation controls
-        document.getElementById('playBtn').addEventListener('click', () => this.playAnimation());
-        document.getElementById('pauseBtn').addEventListener('click', () => this.pauseAnimation());
+        const playBtn = document.getElementById('playBtn');
+        if (playBtn) {
+            playBtn.addEventListener('click', () => this.playAnimation());
+        }
+        
+        const pauseBtn = document.getElementById('pauseBtn');
+        if (pauseBtn) {
+            pauseBtn.addEventListener('click', () => this.pauseAnimation());
+        }
         
         // Color controls
-        document.getElementById('addColorBtn').addEventListener('click', () => this.ui.addColorFromInput());
-        document.getElementById('deleteColorBtn').addEventListener('click', () => {
-            this.ui.deleteColor(this.state.currentColor);
-        });
+        const addColorBtn = document.getElementById('addColorBtn');
+        if (addColorBtn) {
+            addColorBtn.addEventListener('click', () => this.ui.addColorFromInput());
+        }
         
-        this.ui.elements.colorPicker.addEventListener('input', (e) => {
-            this.ui.elements.colorInput.value = e.target.value;
-        });
+        const deleteColorBtn = document.getElementById('deleteColorBtn');
+        if (deleteColorBtn) {
+            deleteColorBtn.addEventListener('click', () => {
+                this.ui.deleteColor(this.state.currentColor);
+            });
+        }
         
-        this.ui.elements.colorInput.addEventListener('change', (e) => {
-            this.ui.elements.colorPicker.value = e.target.value;
-        });
+        if (this.ui.elements.colorPicker) {
+            this.ui.elements.colorPicker.addEventListener('input', (e) => {
+                if (this.ui.elements.colorInput) {
+                    this.ui.elements.colorInput.value = e.target.value;
+                }
+            });
+        }
+        
+        if (this.ui.elements.colorInput) {
+            this.ui.elements.colorInput.addEventListener('change', (e) => {
+                if (this.ui.elements.colorPicker) {
+                    this.ui.elements.colorPicker.value = e.target.value;
+                }
+            });
+        }
         
         // File operations
-        document.getElementById('importPNGBtn').addEventListener('click', () => {
-            this.ui.elements.importFile.click();
-        });
+        const importPNGBtn = document.getElementById('importPNGBtn');
+        if (importPNGBtn) {
+            importPNGBtn.addEventListener('click', () => {
+                if (this.ui.elements.importFile) {
+                    this.ui.elements.importFile.click();
+                }
+            });
+        }
         
-        this.ui.elements.importFile.addEventListener('change', (e) => {
-            if (e.target.files[0]) {
-                this.importPNG(e.target.files[0]);
-            }
-        });
+        if (this.ui.elements.importFile) {
+            this.ui.elements.importFile.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    this.importPNG(e.target.files[0]);
+                }
+            });
+        }
         
-        document.getElementById('exportPNGBtn').addEventListener('click', () => this.fileOps.exportPNG());
-        document.getElementById('exportJSONBtn').addEventListener('click', () => this.fileOps.exportJSON());
+        const exportPNGBtn = document.getElementById('exportPNGBtn');
+        if (exportPNGBtn) {
+            exportPNGBtn.addEventListener('click', () => this.fileOps.exportPNG());
+        }
+        
+        const exportJSONBtn = document.getElementById('exportJSONBtn');
+        if (exportJSONBtn) {
+            exportJSONBtn.addEventListener('click', () => this.fileOps.exportJSON());
+        }
         
         // Display options
         if (this.ui.elements.toggleGridBtn) {
@@ -116,6 +182,8 @@ class SpriteEditorApp {
         if (this.ui.elements.toggleCheckerboardBtn) {
             this.ui.elements.toggleCheckerboardBtn.addEventListener('click', () => this.ui.toggleCheckerboard());
         }
+        
+        console.log('Event listeners setup complete');
     }
 
     updateDisplayButtons() {
@@ -302,14 +370,10 @@ class SpriteEditorApp {
             console.log('PNG import result:', result);
             this.ui.showAlert(`PNG imported successfully! Found ${result.colorCount} unique colors.`, 'success');
             
-            // Debug: Check what was imported
-            console.log('Current frame after import:', this.state.currentFrame);
-            console.log('Total frames:', this.state.frames.length);
-            console.log('Frame data:', this.state.frames[this.state.currentFrame]);
-            
-            // Force a UI update
-            this.ui.drawFrame();
+            // Update UI
+            this.ui.updateColorPalette();
             this.ui.updateFrameThumbnails();
+            this.ui.drawFrame();
             
         } catch (error) {
             console.error('PNG import error:', error);
@@ -320,5 +384,12 @@ class SpriteEditorApp {
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.spriteEditor = new SpriteEditorApp();
+    console.log('DOM loaded, initializing Sprite Editor...');
+    try {
+        window.spriteEditor = new SpriteEditorApp();
+        console.log('Sprite Editor initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize Sprite Editor:', error);
+        alert('Failed to initialize Sprite Editor. Please check the console for errors.');
+    }
 });
