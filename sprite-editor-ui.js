@@ -1,378 +1,513 @@
-import { SpriteEditorState, PIXEL_SIZE, CANVAS_SCALE, CANVAS_SIZE } from './sprite-editor-state.js';
+import { SpriteEditorState } from './sprite-editor-state.js';
+import { PIXEL_SIZE, MAX_COLORS } from './constants.js';
 
-export class SpriteEditorUI {
-    constructor(state) {
+export class SpriteEditorFileOps {
+    constructor(state, ui) {
         this.state = state;
-        this.isDrawing = false;
-        this.lastMouseX = -1;
-        this.lastMouseY = -1;
-        this.startX = -1;
-        this.startY = -1;
-        
-        // DOM Elements
-        this.mainCanvas = document.getElementById('mainCanvas');
-        this.ctx = this.mainCanvas.getContext('2d');
-        this.ctx.imageSmoothingEnabled = false;
-        
-        this.initElements();
+        this.ui = ui;
     }
 
-    initElements() {
-        // Canvas
-        this.mainCanvas.width = CANVAS_SIZE;
-        this.mainCanvas.height = CANVAS_SIZE;
-        
-        // UI Elements - with null checks
-        this.elements = {
-            frameIndex: document.getElementById('frameIndex'),
-            frameCount: document.getElementById('frameCount'),
-            currentTool: document.getElementById('currentTool'),
-            currentColor: document.getElementById('currentColor'),
-            mousePos: document.getElementById('mousePos'),
-            brushSizeDisplay: document.getElementById('brushSizeDisplay'),
-            frameThumbnails: document.getElementById('frameThumbnails'),
-            colorPalette: document.getElementById('colorPalette'),
-            colorInput: document.getElementById('colorInput'),
-            colorPicker: document.getElementById('colorPicker'),
-            brushSize: document.getElementById('brushSize'),
-            animationSpeed: document.getElementById('animationSpeed'),
-            importFile: document.getElementById('importFile'),
-            toggleGridBtn: document.getElementById('toggleGridBtn'),
-            toggleCheckerboardBtn: document.getElementById('toggleCheckerboardBtn')
-        };
-
-        // Log missing elements for debugging
-        Object.entries(this.elements).forEach(([key, element]) => {
-            if (!element) {
-                console.warn(`UI element not found: ${key}`);
-            }
-        });
+    rgbToHex(r, g, b) {
+        return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
     }
 
-    drawFrame() {
-        console.log('Drawing frame:', this.state.currentFrame);
+    hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    }
+
+    findClosestColor(hex) {
+        const targetRgb = this.hexToRgb(hex);
+        if (!targetRgb) return 0;
         
-        // Clear canvas
-        if (this.state.showCheckerboard) {
-            this.drawCheckerboard();
-        } else {
-            this.ctx.fillStyle = '#222';
-            this.ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-        }
+        let closestIndex = 0;
+        let minDistance = Infinity;
         
-        // Draw grid if enabled
-        if (this.state.showGrid) {
-            this.ctx.strokeStyle = '#444';
-            this.ctx.lineWidth = 1;
-            
-            for (let x = 0; x <= PIXEL_SIZE; x++) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(x * CANVAS_SCALE, 0);
-                this.ctx.lineTo(x * CANVAS_SCALE, CANVAS_SIZE);
-                this.ctx.stroke();
-            }
-            
-            for (let y = 0; y <= PIXEL_SIZE; y++) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(0, y * CANVAS_SCALE);
-                this.ctx.lineTo(CANVAS_SIZE, y * CANVAS_SCALE);
-                this.ctx.stroke();
-            }
-        }
-        
-        // Draw pixels
-        const frame = this.state.frames[this.state.currentFrame];
-        for (let y = 0; y < PIXEL_SIZE; y++) {
-            for (let x = 0; x < PIXEL_SIZE; x++) {
-                const colorIndex = frame[y][x];
-                if (colorIndex > 0) { // Only draw non-transparent pixels
-                    const color = this.state.palette[colorIndex];
-                    if (color) {
-                        this.ctx.fillStyle = color;
-                        this.ctx.fillRect(
-                            x * CANVAS_SCALE + 1,
-                            y * CANVAS_SCALE + 1,
-                            CANVAS_SCALE - 2,
-                            CANVAS_SCALE - 2
-                        );
-                    }
+        for (let i = 0; i < this.state.palette.length; i++) {
+            const rgb = this.hexToRgb(this.state.palette[i]);
+            if (rgb) {
+                const distance = Math.sqrt(
+                    Math.pow(targetRgb.r - rgb.r, 2) +
+                    Math.pow(targetRgb.g - rgb.g, 2) +
+                    Math.pow(targetRgb.b - rgb.b, 2)
+                );
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestIndex = i;
                 }
             }
         }
         
-        this.updateStatusBar();
+        return closestIndex;
     }
 
-    drawCheckerboard() {
-        const checkerSize = CANVAS_SCALE / 2;
-        const lightColor = '#222';
-        const darkColor = '#2a2a2a';
+    async importPNG(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvasWidth = this.state.canvasWidth || PIXEL_SIZE;
+                    const canvasHeight = this.state.canvasHeight || PIXEL_SIZE;
+                    
+                    if (img.width !== canvasWidth || img.height !== canvasHeight) {
+                        reject(new Error(`Image must be exactly ${canvasWidth}×${canvasHeight} pixels. Current size: ${img.width}×${img.height}`));
+                        return;
+                    }
+                    
+                    this.processImageData(img).then(resolve).catch(reject);
+                };
+                img.onerror = reject;
+                img.src = e.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async processImageData(img) {
+        const canvasWidth = this.state.canvasWidth || PIXEL_SIZE;
+        const canvasHeight = this.state.canvasHeight || PIXEL_SIZE;
         
-        for (let y = 0; y < CANVAS_SIZE; y += checkerSize) {
-            for (let x = 0; x < CANVAS_SIZE; x += checkerSize) {
-                const isDark = Math.floor(x / checkerSize) % 2 === Math.floor(y / checkerSize) % 2;
-                this.ctx.fillStyle = isDark ? darkColor : lightColor;
-                this.ctx.fillRect(x, y, checkerSize, checkerSize);
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvasWidth;
+        tempCanvas.height = canvasHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(img, 0, 0);
+        
+        const imageData = tempCtx.getImageData(0, 0, canvasWidth, canvasHeight);
+        const data = imageData.data;
+        
+        // Extract colors and create new frame
+        const newFrame = this.state.createEmptyFrame();
+        const foundColors = new Set();
+        const colorMap = new Map();
+        
+        // First pass: collect all unique colors (skip transparent)
+        for (let y = 0; y < canvasHeight; y++) {
+            for (let x = 0; x < canvasWidth; x++) {
+                const idx = (y * canvasWidth + x) * 4;
+                const r = data[idx];
+                const g = data[idx + 1];
+                const b = data[idx + 2];
+                const a = data[idx + 3];
+                
+                if (a > 128) {
+                    const hex = this.rgbToHex(r, g, b);
+                    foundColors.add(hex);
+                }
             }
         }
+        
+        // Add missing colors to palette
+        for (const hexColor of foundColors) {
+            let colorIndex = this.state.palette.indexOf(hexColor);
+            if (colorIndex === -1) {
+                if (this.state.palette.length < MAX_COLORS) {
+                    this.state.palette.push(hexColor);
+                    colorIndex = this.state.palette.length - 1;
+                    colorMap.set(hexColor, colorIndex);
+                } else {
+                    const closestIndex = this.findClosestColor(hexColor);
+                    colorMap.set(hexColor, closestIndex);
+                }
+            } else {
+                colorMap.set(hexColor, colorIndex);
+            }
+        }
+        
+        // Second pass: populate the new frame
+        for (let y = 0; y < canvasHeight; y++) {
+            for (let x = 0; x < canvasWidth; x++) {
+                const idx = (y * canvasWidth + x) * 4;
+                const r = data[idx];
+                const g = data[idx + 1];
+                const b = data[idx + 2];
+                const a = data[idx + 3];
+                
+                if (a > 128) {
+                    const hex = this.rgbToHex(r, g, b);
+                    const colorIndex = colorMap.get(hex) || 1;
+                    newFrame[y][x] = colorIndex;
+                } else {
+                    newFrame[y][x] = 0;
+                }
+            }
+        }
+        
+        // Add the new frame
+        this.state.frames.push(newFrame);
+        this.state.currentFrame = this.state.frames.length - 1;
+        
+        return { colorCount: foundColors.size };
     }
 
-    drawFrameThumbnail(frameIndex, canvas) {
+    exportPNG() {
+        const frame = this.state.frames[this.state.currentFrame];
+        const canvasWidth = this.state.canvasWidth || PIXEL_SIZE;
+        const canvasHeight = this.state.canvasHeight || PIXEL_SIZE;
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
         const ctx = canvas.getContext('2d');
-        const frame = this.state.frames[frameIndex];
-        const scale = canvas.width / PIXEL_SIZE;
-        const checkerSize = scale / 2;
         
-        // Draw checkerboard background
-        const lightColor = '#222';
-        const darkColor = '#2a2a2a';
-        
-        for (let y = 0; y < canvas.height; y += checkerSize) {
-            for (let x = 0; x < canvas.width; x += checkerSize) {
-                const isDark = Math.floor(x / checkerSize) % 2 === Math.floor(y / checkerSize) % 2;
-                ctx.fillStyle = isDark ? darkColor : lightColor;
-                ctx.fillRect(x, y, checkerSize, checkerSize);
-            }
-        }
+        // Create transparent background
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
         
         // Draw pixels (skip transparent pixels)
-        for (let y = 0; y < PIXEL_SIZE; y++) {
-            for (let x = 0; x < PIXEL_SIZE; x++) {
+        for (let y = 0; y < canvasHeight; y++) {
+            for (let x = 0; x < canvasWidth; x++) {
                 const colorIndex = frame[y][x];
-                if (colorIndex > 0) {
-                    ctx.fillStyle = this.state.palette[colorIndex];
-                    ctx.fillRect(x * scale, y * scale, scale, scale);
-                }
-            }
-        }
-    }
-
-    updateFrameThumbnails() {
-        const container = this.elements.frameThumbnails;
-        if (!container) {
-            console.error('frameThumbnails element not found');
-            return;
-        }
-        
-        container.innerHTML = '';
-        
-        this.state.frames.forEach((frame, index) => {
-            const thumb = document.createElement('div');
-            thumb.className = `frame-thumb ${index === this.state.currentFrame ? 'active' : ''}`;
-            thumb.title = `Frame ${index}`;
-            
-            const canvas = document.createElement('canvas');
-            canvas.width = 40;
-            canvas.height = 40;
-            
-            const number = document.createElement('div');
-            number.className = 'frame-number';
-            number.textContent = index;
-            
-            thumb.appendChild(canvas);
-            thumb.appendChild(number);
-            
-            thumb.addEventListener('click', () => {
-                if (!this.state.isPlaying) {
-                    this.state.currentFrame = index;
-                    this.drawFrame();
-                    this.updateFrameThumbnails();
-                    this.saveState();
-                }
-            });
-            
-            container.appendChild(thumb);
-            this.drawFrameThumbnail(index, canvas);
-        });
-    }
-
-    updateColorPalette() {
-        const container = this.elements.colorPalette;
-        if (!container) {
-            console.error('colorPalette element not found');
-            return;
-        }
-        
-        container.innerHTML = '';
-        
-        this.state.palette.forEach((color, index) => {
-            const swatch = document.createElement('div');
-            swatch.className = 'color-swatch';
-            swatch.style.backgroundColor = color;
-            
-            if (index === this.state.currentColor) {
-                swatch.classList.add('selected');
-            }
-            
-            const indexLabel = document.createElement('div');
-            indexLabel.className = 'color-index';
-            indexLabel.textContent = index;
-            
-            // Make text readable on dark backgrounds
-            if (index === 0) { // Black color
-                indexLabel.style.color = '#FFFFFF';
-                indexLabel.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)';
-            } else {
-                indexLabel.style.color = this.getContrastColor(color);
-            }
-            
-            swatch.appendChild(indexLabel);
-            
-            swatch.addEventListener('click', (e) => {
-                if (e.ctrlKey || e.metaKey) {
-                    if (index >= 20) {
-                        this.deleteColor(index);
+                if (colorIndex > 0 && colorIndex < this.state.palette.length) {
+                    const color = this.state.palette[colorIndex];
+                    if (color) {
+                        ctx.fillStyle = color;
+                        ctx.fillRect(x, y, 1, 1);
                     }
-                } else {
-                    this.state.currentColor = index;
-                    this.updateColorPalette();
-                    this.updateStatusBar();
-                    this.saveState();
                 }
-            });
-            
-            container.appendChild(swatch);
+            }
+        }
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.download = `sprite_${canvasWidth}x${canvasHeight}_frame${this.state.currentFrame}_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    }
+
+    exportJSON() {
+        const data = this.state.getStateForExport();
+        const jsonStr = JSON.stringify(data, null, 2);
+        
+        // Create download link
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `sprite_project_${Date.now()}.json`;
+        link.href = url;
+        link.click();
+        
+        // Clean up
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+    }
+    
+    async importJSON(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // Validate JSON structure
+                    if (!this.validateImportData(data)) {
+                        reject(new Error('Invalid sprite project file format'));
+                        return;
+                    }
+                    
+                    // Check compatibility
+                    const canvasWidth = this.state.canvasWidth || PIXEL_SIZE;
+                    const canvasHeight = this.state.canvasHeight || PIXEL_SIZE;
+                    
+                    if (data.canvasWidth !== canvasWidth || data.canvasHeight !== canvasHeight) {
+                        if (!confirm(`Project size (${data.canvasWidth}x${data.canvasHeight}) differs from current size (${canvasWidth}x${canvasHeight}). Resize canvas to match?`)) {
+                            reject(new Error('Canvas size mismatch'));
+                            return;
+                        }
+                    }
+                    
+                    // Load the data into state
+                    this.loadStateFromData(data);
+                    resolve({ framesCount: data.frames.length });
+                } catch (error) {
+                    reject(new Error(`Failed to parse JSON: ${error.message}`));
+                }
+            };
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
         });
     }
     
-    // Helper function to determine text color for contrast
-    getContrastColor(hexColor) {
-        if (!hexColor || hexColor === 'transparent') return '#FFFFFF';
-        
-        // Convert hex to RGB
-        const r = parseInt(hexColor.substr(1, 2), 16);
-        const g = parseInt(hexColor.substr(3, 2), 16);
-        const b = parseInt(hexColor.substr(5, 2), 16);
-        
-        // Calculate luminance
-        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-        
-        // Return black or white based on luminance
-        return luminance > 0.5 ? '#000000' : '#FFFFFF';
-    }
-
-    updateStatusBar() {
-        // Safe updates with null checks
-        if (this.elements.frameIndex) {
-            this.elements.frameIndex.textContent = this.state.currentFrame;
-        }
-        
-        if (this.elements.frameCount) {
-            this.elements.frameCount.textContent = this.state.frames.length - 1;
-        }
-        
-        if (this.elements.currentTool) {
-            this.elements.currentTool.textContent = this.state.currentTool.charAt(0).toUpperCase() + this.state.currentTool.slice(1);
-        }
-        
-        if (this.elements.currentColor) {
-            this.elements.currentColor.textContent = this.state.palette[this.state.currentColor] || '#000000';
-        }
-        
-        if (this.elements.brushSizeDisplay) {
-            this.elements.brushSizeDisplay.textContent = `${this.state.brushSize}×${this.state.brushSize}`;
-        }
-        
-        // Update tool buttons
-        document.querySelectorAll('.tool-btn').forEach(btn => {
-            if (btn.dataset.tool === this.state.currentTool) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
+    validateImportData(data) {
+        // Check required properties
+        const requiredProps = ['palette', 'frames', 'canvasWidth', 'canvasHeight'];
+        for (const prop of requiredProps) {
+            if (!data.hasOwnProperty(prop)) {
+                return false;
             }
-        });
-    }
-
-    showAlert(message, type = 'info') {
-        // Create or reuse alert element
-        let alertDiv = document.getElementById('editor-alert');
-        if (!alertDiv) {
-            alertDiv = document.createElement('div');
-            alertDiv.id = 'editor-alert';
-            alertDiv.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 15px 20px;
-                border-radius: 6px;
-                color: white;
-                font-weight: 600;
-                z-index: 1000;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                transition: opacity 0.3s;
-            `;
-            document.body.appendChild(alertDiv);
         }
         
-        const colors = {
-            info: '#4a9eff',
-            success: '#2ecc71',
-            error: '#e74c3c',
-            warning: '#ff8800'
+        // Validate palette
+        if (!Array.isArray(data.palette) || 
+            data.palette.length > MAX_COLORS ||
+            data.palette.length === 0) {
+            return false;
+        }
+        
+        // Validate palette colors
+        for (const color of data.palette) {
+            if (!/^#[0-9A-F]{6}$/i.test(color)) {
+                return false;
+            }
+        }
+        
+        // Validate frames
+        if (!Array.isArray(data.frames) || data.frames.length === 0) {
+            return false;
+        }
+        
+        // Validate each frame
+        for (const frame of data.frames) {
+            if (!Array.isArray(frame) || frame.length !== data.canvasHeight) {
+                return false;
+            }
+            
+            for (const row of frame) {
+                if (!Array.isArray(row) || row.length !== data.canvasWidth) {
+                    return false;
+                }
+                
+                // Validate pixel values are valid indices into palette
+                for (const pixel of row) {
+                    if (!Number.isInteger(pixel) || pixel < 0 || pixel >= data.palette.length) {
+                        return false;
+                    }
+                }
+            }
+        }
+        
+        return true;
+    }
+    
+    loadStateFromData(data) {
+        // Backup current state in case of failure
+        const backup = this.state.getStateForExport();
+        
+        try {
+            // Update canvas dimensions
+            this.state.canvasWidth = data.canvasWidth;
+            this.state.canvasHeight = data.canvasHeight;
+            
+            // Update palette
+            this.state.palette = [...data.palette];
+            
+            // Update frames
+            this.state.frames = data.frames.map(frame => 
+                frame.map(row => [...row])
+            );
+            
+            // Reset current frame
+            this.state.currentFrame = 0;
+            
+            // Update UI if needed
+            if (this.ui && typeof this.ui.onProjectLoaded === 'function') {
+                this.ui.onProjectLoaded();
+            }
+        } catch (error) {
+            // Restore backup on error
+            this.loadStateFromData(backup);
+            throw error;
+        }
+    }
+    
+    clearProject() {
+        if (!confirm('Are you sure you want to clear the entire project? This cannot be undone.')) {
+            return;
+        }
+        
+        // Reset to defaults
+        this.state.palette = ['#000000', '#FFFFFF'];
+        this.state.frames = [this.state.createEmptyFrame()];
+        this.state.currentFrame = 0;
+        
+        // Reset selection and tools
+        this.state.selection = null;
+        this.state.isDrawing = false;
+        this.state.lastX = -1;
+        this.state.lastY = -1;
+        
+        // Update UI
+        if (this.ui && typeof this.ui.onProjectCleared === 'function') {
+            this.ui.onProjectCleared();
+        }
+    }
+    
+    exportAsPalette() {
+        const paletteData = {
+            name: `sprite_palette_${Date.now()}`,
+            colors: this.state.palette.slice(1), // Skip transparent color
+            author: "Pixel Art Editor",
+            created: new Date().toISOString()
         };
         
-        alertDiv.style.backgroundColor = colors[type] || colors.info;
-        alertDiv.textContent = message;
-        alertDiv.style.opacity = '1';
+        const jsonStr = JSON.stringify(paletteData, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `${paletteData.name}.json`;
+        link.href = url;
+        link.click();
         
-        setTimeout(() => {
-            alertDiv.style.opacity = '0';
-        }, 3000);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
     }
-
-    async deleteColor(index) {
-        try {
-            this.state.deleteColor(index);
-            this.updateColorPalette();
-            this.drawFrame();
-            this.updateFrameThumbnails();
-            this.saveState();
-            this.showAlert('Color deleted successfully', 'success');
-        } catch (error) {
-            this.showAlert(error.message, 'error');
-        }
+    
+    async importPalette(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // Validate palette format
+                    if (!data.colors || !Array.isArray(data.colors)) {
+                        reject(new Error('Invalid palette format: missing colors array'));
+                        return;
+                    }
+                    
+                    // Validate color format
+                    for (const color of data.colors) {
+                        if (!/^#[0-9A-F]{6}$/i.test(color)) {
+                            reject(new Error(`Invalid color format: ${color}`));
+                            return;
+                        }
+                    }
+                    
+                    // Check if palette fits
+                    const availableSlots = MAX_COLORS - 1; // -1 for transparent
+                    if (data.colors.length > availableSlots) {
+                        reject(new Error(`Palette too large. Maximum ${availableSlots} colors allowed.`));
+                        return;
+                    }
+                    
+                    // Apply palette (keep transparent color at index 0)
+                    this.state.palette = ['#000000', ...data.colors];
+                    
+                    resolve({ colorCount: data.colors.length });
+                } catch (error) {
+                    reject(new Error(`Failed to import palette: ${error.message}`));
+                }
+            };
+            reader.onerror = () => reject(new Error('Failed to read palette file'));
+            reader.readAsText(file);
+        });
     }
-
-    async addColorFromInput() {
-        const color = this.elements.colorInput ? this.elements.colorInput.value : '#000000';
-        try {
-            this.state.addColor(color);
-            if (this.elements.colorPicker) {
-                this.elements.colorPicker.value = color;
+    
+    exportAsSpriteSheet() {
+        const frames = this.state.frames;
+        const canvasWidth = this.state.canvasWidth || PIXEL_SIZE;
+        const canvasHeight = this.state.canvasHeight || PIXEL_SIZE;
+        const columns = Math.ceil(Math.sqrt(frames.length));
+        const rows = Math.ceil(frames.length / columns);
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = canvasWidth * columns;
+        canvas.height = canvasHeight * rows;
+        const ctx = canvas.getContext('2d');
+        
+        // Create transparent background
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw all frames in a grid
+        for (let i = 0; i < frames.length; i++) {
+            const frame = frames[i];
+            const col = i % columns;
+            const row = Math.floor(i / columns);
+            const xOffset = col * canvasWidth;
+            const yOffset = row * canvasHeight;
+            
+            for (let y = 0; y < canvasHeight; y++) {
+                for (let x = 0; x < canvasWidth; x++) {
+                    const colorIndex = frame[y][x];
+                    if (colorIndex > 0 && colorIndex < this.state.palette.length) {
+                        const color = this.state.palette[colorIndex];
+                        if (color) {
+                            ctx.fillStyle = color;
+                            ctx.fillRect(xOffset + x, yOffset + y, 1, 1);
+                        }
+                    }
+                }
             }
-            this.updateColorPalette();
-            this.saveState();
-            this.showAlert('Color added successfully', 'success');
-        } catch (error) {
-            this.showAlert(error.message, 'error');
         }
+        
+        // Add grid lines
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.lineWidth = 1;
+        
+        // Vertical lines
+        for (let i = 1; i < columns; i++) {
+            ctx.beginPath();
+            ctx.moveTo(i * canvasWidth, 0);
+            ctx.lineTo(i * canvasWidth, canvas.height);
+            ctx.stroke();
+        }
+        
+        // Horizontal lines
+        for (let i = 1; i < rows; i++) {
+            ctx.beginPath();
+            ctx.moveTo(0, i * canvasHeight);
+            ctx.lineTo(canvas.width, i * canvasHeight);
+            ctx.stroke();
+        }
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.download = `sprite_sheet_${canvasWidth}x${canvasHeight}_${frames.length}frames_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    }
+    
+    createThumbnail(size = 64) {
+        const frame = this.state.frames[this.state.currentFrame];
+        const canvasWidth = this.state.canvasWidth || PIXEL_SIZE;
+        const canvasHeight = this.state.canvasHeight || PIXEL_SIZE;
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        
+        // Create white background for thumbnail
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, size, size);
+        
+        // Calculate scaling
+        const scale = Math.min(size / canvasWidth, size / canvasHeight);
+        const scaledWidth = canvasWidth * scale;
+        const scaledHeight = canvasHeight * scale;
+        const offsetX = (size - scaledWidth) / 2;
+        const offsetY = (size - scaledHeight) / 2;
+        
+        // Draw scaled sprite with nearest-neighbor interpolation
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvasWidth;
+        tempCanvas.height = canvasHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        // Draw the sprite at original size
+        for (let y = 0; y < canvasHeight; y++) {
+            for (let x = 0; x < canvasWidth; x++) {
+                const colorIndex = frame[y][x];
+                if (colorIndex > 0 && colorIndex < this.state.palette.length) {
+                    const color = this.state.palette[colorIndex];
+                    if (color) {
+                        tempCtx.fillStyle = color;
+                        tempCtx.fillRect(x, y, 1, 1);
+                    }
+                }
+            }
+        }
+        
+        // Scale up using nearest-neighbor
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(tempCanvas, 0, 0, canvasWidth, canvasHeight, 
+                      offsetX, offsetY, scaledWidth, scaledHeight);
+        
+        return canvas.toDataURL('image/png');
     }
 
-    saveState() {
-        if (this.state.saveToLocalStorage()) {
-            console.log('State saved to localStorage');
-        }
-    }
-
-    toggleGrid() {
-        this.state.showGrid = !this.state.showGrid;
-        this.drawFrame();
-        this.saveState();
-        const button = this.elements.toggleGridBtn;
-        if (button) {
-            button.textContent = this.state.showGrid ? 'Hide Grid' : 'Show Grid';
-        }
-        this.showAlert(`Grid ${this.state.showGrid ? 'shown' : 'hidden'}`, 'info');
-    }
-
-    toggleCheckerboard() {
-        this.state.showCheckerboard = !this.state.showCheckerboard;
-        this.drawFrame();
-        this.saveState();
-        const button = this.elements.toggleCheckerboardBtn;
-        if (button) {
-            button.textContent = this.state.showCheckerboard ? 'Solid Background' : 'Checkerboard';
-        }
-        this.showAlert(`Checkerboard ${this.state.showCheckerboard ? 'enabled' : 'disabled'}`, 'info');
-    }
 }

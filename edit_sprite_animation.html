@@ -3,102 +3,315 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sprite & Tile Editor</title>
+    <title>Sprite Editor</title>
     <link rel="stylesheet" href="animate.css">
+    <!-- <script src="edit_map/jquery.js"></script> -->
 </head>
 <body>
-    <div class="container">
-        <div class="editor-section">
-            <h1>Sprite & Tile Editor</h1>
-            
-            <div class="section">
-                <h2>Editor Canvas</h2>
-                <canvas id="mainCanvas" width="256" height="256"></canvas>
-                
-                <div class="control-group">
-                    <button id="playBtn" class="success">▶ Play Animation</button>
-                    <button id="pauseBtn" class="secondary">⏸ Pause</button>
-                    <button id="prevFrameBtn">◀ Prev Frame</button>
-                    <button id="nextFrameBtn">▶ Next Frame</button>
+    <!-- Menu Bar -->
+    <div class="menu-bar">
+        <div class="menu-item">
+            <span>File</span>
+            <div class="submenu">
+                <div class="submenu-item" id="menuNew">
+                    <span class="menu-icon">📄</span>New
+                    <span class="shortcut">Ctrl+N</span>
                 </div>
-            </div>
-            
-            <div class="section">
-                <h2>Frames</h2>
-                <div class="frame-thumbnails" id="frameThumbnails"></div>
-                <div class="control-group">
-                    <button id="addFrameBtn">➕ Add Frame</button>
-                    <button id="duplicateFrameBtn">⎘ Duplicate Frame</button>
-                    <button id="deleteFrameBtn" class="danger">🗑 Delete Frame</button>
+                <div class="submenu-item" id="menuOpen">
+                    <span class="menu-icon">📂</span>Open...
+                    <span class="shortcut">Ctrl+O</span>
+                </div>
+                <div class="submenu-item" id="menuSave">
+                    <span class="menu-icon">💾</span>Save
+                    <span class="shortcut">Ctrl+S</span>
+                </div>
+                <div class="submenu-item" id="menuSaveAs">
+                    <span class="menu-icon">💾</span>Save As...
+                    <span class="shortcut">Ctrl+Shift+S</span>
+                </div>
+                <div class="menu-divider"></div>
+                <div class="submenu-item" id="menuImport">
+                    <span class="menu-icon">📥</span>Import PNG...
+                </div>
+                <div class="submenu-item" id="menuExportPNG">
+                    <span class="menu-icon">🖼️</span>Export as PNG
+                </div>
+                <div class="submenu-item" id="menuExportJSON">
+                    <span class="menu-icon">📊</span>Export as JSON
+                </div>
+                <div class="menu-divider"></div>
+                <div class="submenu-item" id="menuExit">
+                    <span class="menu-icon">🚪</span>Exit
                 </div>
             </div>
         </div>
         
-        <div class="sidebar">
-            <div class="sidebar-content">
-                <div class="section">
-                    <h2>Tools</h2>
-                    <div class="tools">
-                        <button class="tool-btn active" data-tool="brush">🖌 Brush</button>
-                        <button class="tool-btn" data-tool="fill">🎨 Fill</button>
-                        <button class="tool-btn" data-tool="eyedropper">💧 Pick</button>
-                        <button class="tool-btn" data-tool="eraser">🧽 Eraser</button>
-                        <button class="tool-btn" data-tool="rectangle">⬜ Rectangle</button>
-                        <button class="tool-btn" data-tool="line">📏 Line</button>
-                    </div>
-                    
-                    <label for="brushSize">Brush Size:</label>
-                    <input type="range" id="brushSize" min="1" max="5" value="1">
-                    <div id="brushSizeDisplay">1×1</div>
+        <div class="menu-item">
+            <span>Edit</span>
+            <div class="submenu">
+                <div class="submenu-item" id="menuUndo">
+                    <span class="menu-icon">↩️</span>Undo
+                    <span class="shortcut">Ctrl+Z</span>
                 </div>
-                
-                <div class="section">
-                    <h2>Display Options</h2>
-                    <div class="control-group">
-                        <button id="toggleGridBtn">Show Grid</button>
-                        <button id="toggleCheckerboardBtn">Checkerboard</button>
-                    </div>
+                <div class="submenu-item" id="menuRedo">
+                    <span class="menu-icon">↪️</span>Redo
+                    <span class="shortcut">Ctrl+Y</span>
                 </div>
-                
-                <div class="section">
-                    <h2>Color Palette</h2>
-                    <div class="color-palette" id="colorPalette"></div>
-                    
-                    <div class="control-group">
-                        <button id="addColorBtn">Add Color</button>
-                        <button id="deleteColorBtn" class="danger">Delete Color</button>
-                    </div>
-                    
-                    <div class="color-input-group">
-                        <label for="colorInput">Custom Color (Hex):</label>
-                        <div class="color-picker-container">
-                            <input type="color" id="colorPicker" value="#000000" title="Color picker">
-                            <input type="text" id="colorInput" placeholder="#000000" value="#000000" title="Hex color code">
-                        </div>
-                    </div>
-                    
-                    <div class="info-text">Click color to select, Ctrl+Click to delete custom colors</div>
+                <div class="menu-divider"></div>
+                <div class="submenu-item" id="menuCopy">
+                    <span class="menu-icon">📋</span>Copy
+                    <span class="shortcut">Ctrl+C</span>
                 </div>
-                
-                <div class="section">
-                    <h2>File Operations</h2>
-                    
-                    <label for="animationSpeed">Animation Speed (ms):</label>
-                    <input type="number" id="animationSpeed" min="50" max="2000" value="200">
-                    
-                    <div class="control-group">
-                        <button id="importPNGBtn">📁 Import PNG</button>
-                        <button id="exportPNGBtn">💾 Export PNG</button>
-                        <button id="exportJSONBtn">📊 Export JSON</button>
-                    </div>
-                    
-                    <input type="file" id="importFile" accept=".png" class="file-input-hidden">
+                <div class="submenu-item" id="menuPaste">
+                    <span class="menu-icon">📋</span>Paste
+                    <span class="shortcut">Ctrl+V</span>
+                </div>
+                <div class="menu-divider"></div>
+                <div class="submenu-item" id="menuClear">
+                    <span class="menu-icon">🧹</span>Clear Canvas
+                </div>
+                <div class="submenu-item" id="menuSelectAll">
+                    <span class="menu-icon">☑️</span>Select All
+                    <span class="shortcut">Ctrl+A</span>
                 </div>
             </div>
-
+        </div>
+        
+        <div class="menu-item">
+            <span>View</span>
+            <div class="submenu">
+                <div class="submenu-item" id="menuZoomIn">
+                    <span class="menu-icon">🔍</span>Zoom In
+                    <span class="shortcut">Ctrl++</span>
+                </div>
+                <div class="submenu-item" id="menuZoomOut">
+                    <span class="menu-icon">🔍</span>Zoom Out
+                    <span class="shortcut">Ctrl+-</span>
+                </div>
+                <div class="submenu-item" id="menuResetZoom">
+                    <span class="menu-icon">🔄</span>Reset Zoom
+                </div>
+                <div class="menu-divider"></div>
+                <div class="submenu-item" id="menuToggleGrid">
+                    <span class="menu-icon">⬜</span>Toggle Grid
+                </div>
+                <div class="submenu-item" id="menuToggleCheckerboard">
+                    <span class="menu-icon">◼️</span>Toggle Checkerboard
+                </div>
+                <div class="menu-divider"></div>
+                <div class="submenu-item" id="menuFullscreen">
+                    <span class="menu-icon">⛶</span>Toggle Fullscreen
+                    <span class="shortcut">F11</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="menu-item">
+            <span>Frame</span>
+            <div class="submenu">
+                <div class="submenu-item" id="menuAddFrame">
+                    <span class="menu-icon">➕</span>Add Frame
+                </div>
+                <div class="submenu-item" id="menuDuplicateFrame">
+                    <span class="menu-icon">📋</span>Duplicate Frame
+                </div>
+                <div class="submenu-item" id="menuDeleteFrame">
+                    <span class="menu-icon">🗑️</span>Delete Frame
+                </div>
+                <div class="menu-divider"></div>
+                <div class="submenu-item" id="menuPrevFrame">
+                    <span class="menu-icon">◀</span>Previous Frame
+                </div>
+                <div class="submenu-item" id="menuNextFrame">
+                    <span class="menu-icon">▶</span>Next Frame
+                </div>
+                <div class="menu-divider"></div>
+                <div class="submenu-item" id="menuFrameSettings">
+                    <span class="menu-icon">⚙️</span>Frame Settings...
+                </div>
+            </div>
+        </div>
+        
+        <div class="menu-item">
+            <span>Animation</span>
+            <div class="submenu">
+                <div class="submenu-item" id="menuPlayAnimation">
+                    <span class="menu-icon">▶</span>Play Animation
+                </div>
+                <div class="submenu-item" id="menuPauseAnimation">
+                    <span class="menu-icon">⏸</span>Pause Animation
+                </div>
+                <div class="menu-divider"></div>
+                <div class="submenu-item" id="menuAnimationSettings">
+                    <span class="menu-icon">⚙️</span>Animation Settings...
+                </div>
+                <div class="submenu-item" id="menuPreviewAnimation">
+                    <span class="menu-icon">👁️</span>Preview Animation
+                </div>
+            </div>
+        </div>
+        
+        <div class="menu-item">
+            <span>Help</span>
+            <div class="submenu">
+                <div class="submenu-item" id="menuHelp">
+                    <span class="menu-icon">❓</span>Help
+                </div>
+                <div class="submenu-item" id="menuShortcuts">
+                    <span class="menu-icon">⌨️</span>Keyboard Shortcuts
+                </div>
+                <div class="menu-divider"></div>
+                <div class="submenu-item" id="menuAbout">
+                    <span class="menu-icon">ℹ️</span>About Sprite Editor
+                </div>
+            </div>
         </div>
     </div>
 
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Left: Editor Section -->
+        <div class="editor-section">
+            <h1>Sprite Editor</h1>
+            
+            <!-- Canvas Container -->
+            <div class="canvas-container">
+                <canvas id="mainCanvas"></canvas>
+            </div>
+            
+            <!-- Frame Thumbnails -->
+            <div class="section">
+                <h2>Frames</h2>
+                <div id="frameThumbnails" class="frame-thumbnails">
+                    <!-- Frame thumbnails will be added here by JavaScript -->
+                </div>
+                <div class="control-group">
+                    <button id="addFrameBtn" class="success">+ Add Frame</button>
+                    <button id="duplicateFrameBtn" class="secondary">Duplicate</button>
+                    <button id="deleteFrameBtn" class="danger">Delete</button>
+                    <button id="prevFrameBtn" class="secondary">◀ Prev</button>
+                    <button id="nextFrameBtn" class="secondary">Next ▶</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right: Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-content">
+                <!-- Tools Section -->
+                <div class="section">
+                    <h2>Tools</h2>
+                    <div class="tools">
+                        <button class="tool-btn active" data-tool="brush" id="brushTool">
+                            <span class="tool-icon">🖌️</span>Brush
+                        </button>
+                        <button class="tool-btn" data-tool="fill" id="fillTool">
+                            <span class="tool-icon">🎨</span>Fill
+                        </button>
+                        <button class="tool-btn" data-tool="eyedropper" id="eyedropperTool">
+                            <span class="tool-icon">💧</span>Pick
+                        </button>
+                        <button class="tool-btn" data-tool="eraser" id="eraserTool">
+                            <span class="tool-icon">🧽</span>Eraser
+                        </button>
+                        <button class="tool-btn" data-tool="rectangle" id="rectangleTool">
+                            <span class="tool-icon">⬜</span>Rectangle
+                        </button>
+                        <button class="tool-btn" data-tool="line" id="lineTool">
+                            <span class="tool-icon">📏</span>Line
+                        </button>
+                    </div>
+                    
+                    <!-- Brush Size Control -->
+                    <div class="control-group">
+                        <label for="brushSize">Brush Size:</label>
+                        <input type="range" id="brushSize" min="1" max="10" value="1">
+                        <span id="brushSizeDisplay">1×1</span>
+                    </div>
+                </div>
+                
+                <!-- Colors Section -->
+                <div class="section">
+                    <h2>Colors</h2>
+                    <div id="colorPalette" class="color-palette">
+                        <!-- Color swatches will be added here by JavaScript -->
+                    </div>
+                    <div class="color-input-group">
+                        <label for="colorPicker">Current Color:</label>
+                        <div class="color-picker-container">
+                            <input type="color" id="colorPicker" value="#ff0000">
+                            <input type="text" id="colorInput" value="#ff0000">
+                            <button id="addColorBtn" class="success">+ Add</button>
+                            <button id="deleteColorBtn" class="danger">- Delete</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Display Options -->
+                <div class="section">
+                    <h2>Display Options</h2>
+                    <div class="control-group">
+                        <button id="toggleGridBtn" class="secondary">Grid: On</button>
+                        <button id="toggleCheckerboardBtn" class="secondary">Checkerboard</button>
+                    </div>
+                    
+                    <!-- Canvas Size -->
+                    <div class="control-group">
+                        <label>Canvas Size:</label>
+                        <button class="size-btn" data-size="16">16×16</button>
+                        <button class="size-btn" data-size="24">24×24</button>
+                        <button class="size-btn" data-size="32">32×32</button>
+                        <span id="currentSizeDisplay">16×16</span>
+                    </div>
+                </div>
+                
+                <!-- Animation Controls -->
+                <div class="section">
+                    <h2>Animation</h2>
+                    <div class="control-group">
+                        <label for="animationSpeed">Speed:</label>
+                        <select id="animationSpeed">
+                            <option value="100">Fast</option>
+                            <option value="200" selected>Normal</option>
+                            <option value="500">Slow</option>
+                            <option value="1000">Very Slow</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <button id="playBtn" class="success">▶ Play</button>
+                        <button id="pauseBtn" class="secondary" disabled>⏸ Pause</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div>
+                    <span>Position:</span> <span id="mousePos">X:0, Y:0</span>
+                </div>
+                <div>
+                    <span>Tool:</span> <span id="toolInfo">Brush</span>
+                </div>
+                <div>
+                    <span>Color:</span> <span id="colorInfo">#ff0000</span>
+                </div>
+                <div>
+                    <span>Canvas:</span> <span id="canvasInfo">16×16</span>
+                </div>
+                <div>
+                    <span>Frame:</span> <span id="frameInfo">1/1</span>
+                </div>
+                <div>
+                    <span>Status:</span> <span id="animationInfo">Paused</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="importFile" accept=".png" class="file-input-hidden">
+    
+    <!-- Import JavaScript -->
     <script type="module" src="animate.js"></script>
 </body>
 </html>

@@ -1,395 +1,476 @@
-import { SpriteEditorState, PIXEL_SIZE, CANVAS_SCALE } from './sprite-editor-state.js';
+// animate.js - Main application file
+import { SpriteEditorState } from './sprite-editor-state.js';
 import { SpriteEditorUI } from './sprite-editor-ui.js';
 import { SpriteEditorFileOps } from './sprite-editor-file-ops.js';
+import $ from './edit_map/jquery.js'; // Import jQuery as ES6 module
 
-class SpriteEditorApp {
-    constructor() {
-        this.state = new SpriteEditorState();
-        this.ui = new SpriteEditorUI(this.state);
-        this.fileOps = new SpriteEditorFileOps(this.state, this.ui);
-        this.isDrawing = false;
-        this.startX = -1;
-        this.startY = -1;
-        
-        this.init();
-    }
+// Import constants if needed
+import { CANVAS_SCALE, PIXEL_SIZE, MAX_COLORS } from './constants.js';
 
-    init() {
-        console.log('Initializing Sprite Editor...');
+// Initialize the application when DOM is ready
+$(document).ready(() => {
+    console.log('Sprite Editor initializing...');
+    
+    try {
+        // Initialize state
+        const state = new SpriteEditorState();
         
-        // Load saved state or initialize
-        if (!this.state.loadFromLocalStorage()) {
-            console.log('No saved state found, initializing empty state');
-            this.state.initEmptyState();
-        }
+        // Initialize UI
+        const ui = new SpriteEditorUI(state);
         
-        // Setup event listeners
-        this.setupEventListeners();
+        // Initialize file operations
+        const fileOps = new SpriteEditorFileOps(state, ui);
         
-        // Initial render
-        this.ui.updateColorPalette();
-        this.ui.updateFrameThumbnails();
-        this.ui.drawFrame();
+        // Set up all event listeners using jQuery
+        setupEventListeners(state, ui, fileOps);
         
-        // Update display option buttons if they exist
-        if (this.ui.elements.toggleGridBtn) {
-            this.ui.elements.toggleGridBtn.textContent = this.state.showGrid ? 'Hide Grid' : 'Show Grid';
-        }
-        
-        if (this.ui.elements.toggleCheckerboardBtn) {
-            this.ui.elements.toggleCheckerboardBtn.textContent = this.state.showCheckerboard ? 'Solid Background' : 'Checkerboard';
-        }
-        
-        // Auto-save on unload
-        window.addEventListener('beforeunload', () => {
-            this.state.saveToLocalStorage();
-        });
-        
-        // Auto-save every 30 seconds
-        setInterval(() => {
-            this.state.saveToLocalStorage();
-        }, 30000);
+        // Initial UI updates
+        ui.drawFrame();
+        ui.updateFrameThumbnails();
+        ui.updateColorPalette();
+        ui.updateStatusBar();
         
         console.log('Sprite Editor initialized successfully');
+        
+        // Expose for debugging
+        window.spriteEditor = { state, ui, fileOps };
+        
+    } catch (error) {
+        console.error('Failed to initialize Sprite Editor:', error);
+        alert(`Failed to initialize: ${error.message}`);
     }
+});
 
-    setupEventListeners() {
-        console.log('Setting up event listeners...');
-        
-        // Canvas events
-        this.ui.mainCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        this.ui.mainCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        this.ui.mainCanvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
-        this.ui.mainCanvas.addEventListener('mouseleave', () => this.handleMouseLeave());
-        
-        // Tool selection
-        document.querySelectorAll('.tool-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.state.currentTool = btn.dataset.tool;
-                this.ui.updateStatusBar();
-                this.state.saveToLocalStorage();
-            });
-        });
-        
-        // Brush size
-        if (this.ui.elements.brushSize) {
-            this.ui.elements.brushSize.addEventListener('input', (e) => {
-                this.state.brushSize = parseInt(e.target.value);
-                this.ui.updateStatusBar();
-                this.state.saveToLocalStorage();
-            });
+function setupEventListeners(state, ui, fileOps) {
+    console.log('Setting up event listeners...');
+    
+    // Tool buttons
+    $('.tool-btn').on('click', function() {
+        const tool = $(this).data('tool');
+        if (tool) {
+            $('.tool-btn').removeClass('active');
+            $(this).addClass('active');
+            state.currentTool = tool;
+            ui.updateStatusBar();
         }
-        
-        // Frame controls
-        const addFrameBtn = document.getElementById('addFrameBtn');
-        if (addFrameBtn) {
-            addFrameBtn.addEventListener('click', () => this.addFrame(false));
+    });
+    
+    // Brush size control
+    $('#brushSize').on('input', function() {
+        state.brushSize = parseInt($(this).val());
+        $('#brushSizeDisplay').text(`${state.brushSize}×${state.brushSize}`);
+        ui.updateStatusBar();
+    });
+    
+    // Color picker
+    $('#colorPicker').on('input', function() {
+        const color = $(this).val();
+        $('#colorInput').val(color);
+        try {
+            // Find or add color
+            const index = state.palette.indexOf(color);
+            if (index !== -1) {
+                state.currentColor = index;
+            } else {
+                state.addColor(color);
+                state.currentColor = state.palette.length - 1;
+            }
+            ui.updateColorPalette();
+            ui.updateStatusBar();
+        } catch (error) {
+            ui.showAlert(error.message, 'error');
         }
-        
-        const duplicateFrameBtn = document.getElementById('duplicateFrameBtn');
-        if (duplicateFrameBtn) {
-            duplicateFrameBtn.addEventListener('click', () => this.duplicateFrame());
+    });
+    
+    // Color input
+    $('#colorInput').on('change', function() {
+        const color = $(this).val();
+        if (/^#[0-9A-F]{6}$/i.test(color)) {
+            $('#colorPicker').val(color);
+            $('#colorPicker').trigger('input');
+        } else {
+            ui.showAlert('Invalid color format. Use #RRGGBB', 'error');
         }
-        
-        const deleteFrameBtn = document.getElementById('deleteFrameBtn');
-        if (deleteFrameBtn) {
-            deleteFrameBtn.addEventListener('click', () => this.deleteFrame());
+    });
+    
+    // Add color button
+    $('#addColorBtn').on('click', () => {
+        ui.addColorFromInput();
+    });
+    
+    // Delete color button
+    $('#deleteColorBtn').on('click', () => {
+        if (state.currentColor > 1) { // Don't delete transparent (0) or default black (1)
+            ui.deleteColor(state.currentColor);
+        } else {
+            ui.showAlert('Cannot delete default colors', 'error');
         }
-        
-        const prevFrameBtn = document.getElementById('prevFrameBtn');
-        if (prevFrameBtn) {
-            prevFrameBtn.addEventListener('click', () => this.prevFrame());
+    });
+    
+    // Canvas size buttons
+    $('.size-btn').on('click', function() {
+        const newSize = parseInt($(this).data('size'));
+        if (ui.changeCanvasSize(newSize)) {
+            $('.size-btn').removeClass('active');
+            $(this).addClass('active');
         }
-        
-        const nextFrameBtn = document.getElementById('nextFrameBtn');
-        if (nextFrameBtn) {
-            nextFrameBtn.addEventListener('click', () => this.nextFrame());
+    });
+    
+    // Frame management buttons
+    $('#addFrameBtn').on('click', () => {
+        state.addFrame();
+        ui.drawFrame();
+        ui.updateFrameThumbnails();
+        ui.updateStatusBar();
+        state.saveToLocalStorage();
+    });
+    
+    $('#duplicateFrameBtn').on('click', () => {
+        state.duplicateFrame();
+        ui.drawFrame();
+        ui.updateFrameThumbnails();
+        ui.updateStatusBar();
+        state.saveToLocalStorage();
+    });
+    
+    $('#deleteFrameBtn').on('click', () => {
+        if (state.frames.length > 1) {
+            if (confirm('Delete current frame?')) {
+                state.deleteFrame();
+                ui.drawFrame();
+                ui.updateFrameThumbnails();
+                ui.updateStatusBar();
+                state.saveToLocalStorage();
+            }
+        } else {
+            ui.showAlert('Cannot delete the last frame', 'error');
         }
-        
-        // Animation controls
-        const playBtn = document.getElementById('playBtn');
-        if (playBtn) {
-            playBtn.addEventListener('click', () => this.playAnimation());
+    });
+    
+    $('#prevFrameBtn').on('click', () => {
+        state.prevFrame();
+        ui.drawFrame();
+        ui.updateFrameThumbnails();
+        ui.updateStatusBar();
+    });
+    
+    $('#nextFrameBtn').on('click', () => {
+        state.nextFrame();
+        ui.drawFrame();
+        ui.updateFrameThumbnails();
+        ui.updateStatusBar();
+    });
+    
+    // Grid and checkerboard toggles
+    $('#toggleGridBtn').on('click', () => {
+        ui.toggleGrid();
+    });
+    
+    $('#toggleCheckerboardBtn').on('click', () => {
+        ui.toggleCheckerboard();
+    });
+    
+    // Animation controls
+    $('#playBtn').on('click', () => {
+        if (!state.isPlaying) {
+            const speed = parseInt($('#animationSpeed').val());
+            state.playAnimation(speed);
+            $('#playBtn').prop('disabled', true);
+            $('#pauseBtn').prop('disabled', false);
+            ui.updateStatusBar();
         }
-        
-        const pauseBtn = document.getElementById('pauseBtn');
-        if (pauseBtn) {
-            pauseBtn.addEventListener('click', () => this.pauseAnimation());
+    });
+    
+    $('#pauseBtn').on('click', () => {
+        state.pauseAnimation();
+        $('#playBtn').prop('disabled', false);
+        $('#pauseBtn').prop('disabled', true);
+        ui.updateStatusBar();
+    });
+    
+    $('#animationSpeed').on('change', function() {
+        if (state.isPlaying) {
+            const speed = parseInt($(this).val());
+            state.pauseAnimation();
+            state.playAnimation(speed);
         }
-        
-        // Color controls
-        const addColorBtn = document.getElementById('addColorBtn');
-        if (addColorBtn) {
-            addColorBtn.addEventListener('click', () => this.ui.addColorFromInput());
+    });
+    
+    // Menu event handlers
+    setupMenuHandlers(state, ui, fileOps);
+    
+    // Canvas mouse events
+    setupCanvasEvents(state, ui);
+    
+    console.log('Event listeners setup complete');
+}
+
+function setupMenuHandlers(state, ui, fileOps) {
+    // File menu
+    $('#menuNew').on('click', () => {
+        if (confirm('Start new project? Unsaved changes will be lost.')) {
+            state.clearProject();
+            ui.drawFrame();
+            ui.updateFrameThumbnails();
+            ui.updateColorPalette();
+            ui.updateStatusBar();
         }
-        
-        const deleteColorBtn = document.getElementById('deleteColorBtn');
-        if (deleteColorBtn) {
-            deleteColorBtn.addEventListener('click', () => {
-                this.ui.deleteColor(this.state.currentColor);
-            });
+    });
+    
+    $('#menuOpen').on('click', () => {
+        $('#importFile').trigger('click');
+    });
+    
+    $('#menuSave').on('click', () => {
+        fileOps.exportJSON();
+    });
+    
+    $('#menuSaveAs').on('click', () => {
+        fileOps.exportJSON();
+    });
+    
+    $('#menuImport').on('click', () => {
+        $('#importFile').trigger('click');
+    });
+    
+    $('#menuExportPNG').on('click', () => {
+        fileOps.exportPNG();
+    });
+    
+    $('#menuExportJSON').on('click', () => {
+        fileOps.exportJSON();
+    });
+    
+    // Edit menu
+    $('#menuClear').on('click', () => {
+        if (confirm('Clear current frame?')) {
+            state.clearCurrentFrame();
+            ui.drawFrame();
+            ui.updateFrameThumbnails();
         }
-        
-        if (this.ui.elements.colorPicker) {
-            this.ui.elements.colorPicker.addEventListener('input', (e) => {
-                if (this.ui.elements.colorInput) {
-                    this.ui.elements.colorInput.value = e.target.value;
+    });
+    
+    // View menu
+    $('#menuToggleGrid').on('click', () => {
+        ui.toggleGrid();
+    });
+    
+    $('#menuToggleCheckerboard').on('click', () => {
+        ui.toggleCheckerboard();
+    });
+    
+    // Frame menu
+    $('#menuAddFrame').on('click', () => {
+        state.addFrame();
+        ui.drawFrame();
+        ui.updateFrameThumbnails();
+        ui.updateStatusBar();
+    });
+    
+    $('#menuDuplicateFrame').on('click', () => {
+        state.duplicateFrame();
+        ui.drawFrame();
+        ui.updateFrameThumbnails();
+        ui.updateStatusBar();
+    });
+    
+    $('#menuDeleteFrame').on('click', () => {
+        if (state.frames.length > 1) {
+            if (confirm('Delete current frame?')) {
+                state.deleteFrame();
+                ui.drawFrame();
+                ui.updateFrameThumbnails();
+                ui.updateStatusBar();
+            }
+        } else {
+            ui.showAlert('Cannot delete the last frame', 'error');
+        }
+    });
+    
+    // File import handling
+    $('#importFile').on('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            try {
+                if (file.name.endsWith('.json')) {
+                    await fileOps.importJSON(file);
+                } else if (file.name.endsWith('.png')) {
+                    await fileOps.importPNG(file);
+                } else {
+                    ui.showAlert('Unsupported file format', 'error');
+                    return;
                 }
-            });
+                
+                ui.drawFrame();
+                ui.updateFrameThumbnails();
+                ui.updateColorPalette();
+                ui.updateStatusBar();
+                ui.showAlert('File imported successfully', 'success');
+                
+            } catch (error) {
+                ui.showAlert(error.message, 'error');
+            } finally {
+                // Reset file input
+                e.target.value = '';
+            }
         }
-        
-        if (this.ui.elements.colorInput) {
-            this.ui.elements.colorInput.addEventListener('change', (e) => {
-                if (this.ui.elements.colorPicker) {
-                    this.ui.elements.colorPicker.value = e.target.value;
-                }
-            });
-        }
-        
-        // File operations
-        const importPNGBtn = document.getElementById('importPNGBtn');
-        if (importPNGBtn) {
-            importPNGBtn.addEventListener('click', () => {
-                if (this.ui.elements.importFile) {
-                    this.ui.elements.importFile.click();
-                }
-            });
-        }
-        
-        if (this.ui.elements.importFile) {
-            this.ui.elements.importFile.addEventListener('change', (e) => {
-                if (e.target.files[0]) {
-                    this.importPNG(e.target.files[0]);
-                }
-            });
-        }
-        
-        const exportPNGBtn = document.getElementById('exportPNGBtn');
-        if (exportPNGBtn) {
-            exportPNGBtn.addEventListener('click', () => this.fileOps.exportPNG());
-        }
-        
-        const exportJSONBtn = document.getElementById('exportJSONBtn');
-        if (exportJSONBtn) {
-            exportJSONBtn.addEventListener('click', () => this.fileOps.exportJSON());
-        }
-        
-        // Display options
-        if (this.ui.elements.toggleGridBtn) {
-            this.ui.elements.toggleGridBtn.addEventListener('click', () => this.ui.toggleGrid());
-        }
-        
-        if (this.ui.elements.toggleCheckerboardBtn) {
-            this.ui.elements.toggleCheckerboardBtn.addEventListener('click', () => this.ui.toggleCheckerboard());
-        }
-        
-        console.log('Event listeners setup complete');
+    });
+}
+
+function setupCanvasEvents(state, ui) {
+    const canvas = ui.elements.mainCanvas;
+    if (!canvas) return;
+    
+    let isDrawing = false;
+    let lastX = -1;
+    let lastY = -1;
+    
+    // Get canvas position relative to viewport
+    function getCanvasCoordinates(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scale = CANVAS_SCALE;
+        const x = Math.floor((e.clientX - rect.left) / scale);
+        const y = Math.floor((e.clientY - rect.top) / scale);
+        return { x, y };
     }
-
-    updateDisplayButtons() {
-        if (this.ui.elements.toggleGridBtn) {
-            this.ui.elements.toggleGridBtn.textContent = this.state.showGrid ? 'Hide Grid' : 'Show Grid';
+    
+    // Update mouse position display
+    canvas.addEventListener('mousemove', (e) => {
+        const { x, y } = getCanvasCoordinates(e);
+        if (ui.elements.mousePos) {
+            ui.elements.mousePos.textContent = `X:${x}, Y:${y}`;
         }
         
-        if (this.ui.elements.toggleCheckerboardBtn) {
-            this.ui.elements.toggleCheckerboardBtn.textContent = this.state.showCheckerboard ? 'Solid Background' : 'Checkerboard';
+        // Handle drawing
+        if (isDrawing) {
+            drawPixel(x, y, true);
         }
-    }
-
-    handleMouseDown(e) {
-        if (this.state.isPlaying) return;
+    });
+    
+    canvas.addEventListener('mousedown', (e) => {
+        isDrawing = true;
+        const { x, y } = getCanvasCoordinates(e);
+        drawPixel(x, y, false);
+    });
+    
+    canvas.addEventListener('mouseup', () => {
+        isDrawing = false;
+        lastX = -1;
+        lastY = -1;
+        state.saveToLocalStorage();
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+        isDrawing = false;
+        lastX = -1;
+        lastY = -1;
+    });
+    
+    function drawPixel(x, y, isDragging) {
+        // Check bounds
+        if (x < 0 || x >= state.canvasWidth || y < 0 || y >= state.canvasHeight) {
+            return;
+        }
         
-        const rect = this.ui.mainCanvas.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / CANVAS_SCALE);
-        const y = Math.floor((e.clientY - rect.top) / CANVAS_SCALE);
+        const frame = state.frames[state.currentFrame];
         
-        if (x < 0 || x >= PIXEL_SIZE || y < 0 || y >= PIXEL_SIZE) return;
-        
-        this.isDrawing = true;
-        this.startX = x;
-        this.startY = y;
-        
-        switch (this.state.currentTool) {
+        switch (state.currentTool) {
             case 'brush':
-                this.state.drawPixel(x, y, this.state.currentColor);
-                this.ui.drawFrame();
-                this.state.saveToLocalStorage();
+                drawBrush(x, y, isDragging, frame);
                 break;
-                
-                case 'eraser':
-                    this.state.drawPixel(x, y, 0); // 0 = transparent
-                    this.ui.drawFrame();
-                    this.state.saveToLocalStorage();
-                    break;
-                
-            case 'eyedropper':
-                const frame = this.state.frames[this.state.currentFrame];
-                const pickedColor = frame[y][x];
-                if (pickedColor !== -1) { // Don't pick eraser/transparent
-                    this.state.currentColor = pickedColor;
-                    this.ui.updateColorPalette();
-                    this.ui.updateStatusBar();
-                }
-                break;
-                
-            case 'fill':
-                const targetColor = this.state.frames[this.state.currentFrame][y][x];
-                this.state.fillArea(x, y, targetColor, this.state.currentColor);
-                this.ui.drawFrame();
-                this.state.saveToLocalStorage();
-                break;
-        }
-    }
-
-    handleMouseMove(e) {
-        const rect = this.ui.mainCanvas.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / this.CANVAS_SCALE); // Use this.CANVAS_SCALE
-        const y = Math.floor((e.clientY - rect.top) / this.CANVAS_SCALE); // Use this.CANVAS_SCALE
-        
-        // Update mouse position display
-        this.ui.elements.mousePos.textContent = `X:${x}, Y:${y}`;
-        
-        if (!this.isDrawing) return;
-        
-        switch (this.state.currentTool) {
-            case 'brush':
             case 'eraser':
-                const color = this.state.currentTool === 'eraser' ? 0 : this.state.currentColor;
-                this.state.drawPixel(x, y, color);
-                this.ui.drawFrame();
+                frame[y][x] = 0; // Transparent
+                break;
+            case 'eyedropper':
+                const colorIndex = frame[y][x];
+                if (colorIndex !== 0 && colorIndex < state.palette.length) {
+                    state.currentColor = colorIndex;
+                    ui.updateColorPalette();
+                    ui.updateStatusBar();
+                    $('#colorPicker').val(state.palette[colorIndex]);
+                    $('#colorInput').val(state.palette[colorIndex]);
+                }
+                return; // Don't redraw for eyedropper
+            case 'fill':
+                // Simple flood fill implementation
+                const targetColor = frame[y][x];
+                if (targetColor !== state.currentColor) {
+                    floodFill(x, y, targetColor, state.currentColor, frame);
+                }
                 break;
         }
+        
+        ui.drawFrame();
+        lastX = x;
+        lastY = y;
     }
-
-    handleMouseUp(e) {
-        if (!this.isDrawing) return;
+    
+    function drawBrush(x, y, isDragging, frame) {
+        const brushSize = state.brushSize;
+        const halfSize = Math.floor(brushSize / 2);
         
-        const rect = this.ui.mainCanvas.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / this.CANVAS_SCALE); // Use this.CANVAS_SCALE
-        const y = Math.floor((e.clientY - rect.top) / this.CANVAS_SCALE); // Use this.CANVAS_SCALE
-        
-        switch (this.state.currentTool) {
-            case 'line':
-                this.state.drawLine(this.startX, this.startY, x, y, this.state.currentColor);
-                this.ui.drawFrame();
-                this.state.saveToLocalStorage();
-                break;
+        for (let dy = -halfSize; dy <= halfSize; dy++) {
+            for (let dx = -halfSize; dx <= halfSize; dx++) {
+                const px = x + dx;
+                const py = y + dy;
                 
-            case 'rectangle':
-                this.state.drawRectangle(this.startX, this.startY, x, y, this.state.currentColor);
-                this.ui.drawFrame();
-                this.state.saveToLocalStorage();
-                break;
+                if (px >= 0 && px < state.canvasWidth && py >= 0 && py < state.canvasHeight) {
+                    // For line drawing during drag
+                    if (isDragging && lastX >= 0 && lastY >= 0 && 
+                        (state.currentTool === 'brush' || state.currentTool === 'eraser')) {
+                        drawLine(lastX, lastY, x, y, frame);
+                    } else {
+                        frame[py][px] = state.currentColor;
+                    }
+                }
+            }
         }
+    }
+    
+    function drawLine(x1, y1, x2, y2, frame) {
+        const dx = Math.abs(x2 - x1);
+        const dy = Math.abs(y2 - y1);
+        const sx = (x1 < x2) ? 1 : -1;
+        const sy = (y1 < y2) ? 1 : -1;
+        let err = dx - dy;
         
-        this.isDrawing = false;
-        this.startX = -1;
-        this.startY = -1;
-    }
-
-    handleMouseLeave() {
-        this.isDrawing = false;
-        this.startX = -1;
-        this.startY = -1;
-        this.ui.elements.mousePos.textContent = 'X:0, Y:0';
-    }
-
-    // Frame management methods
-    addFrame(copyCurrent = false) {
-        try {
-            this.state.addFrame(copyCurrent);
-            this.ui.updateFrameThumbnails();
-            this.ui.drawFrame();
-            this.state.saveToLocalStorage();
-            this.ui.showAlert('Frame added successfully', 'success');
-        } catch (error) {
-            this.ui.showAlert(error.message, 'error');
-        }
-    }
-
-    duplicateFrame() {
-        this.addFrame(true);
-    }
-
-    deleteFrame() {
-        try {
-            this.state.deleteFrame();
-            this.ui.updateFrameThumbnails();
-            this.ui.drawFrame();
-            this.state.saveToLocalStorage();
-            this.ui.showAlert('Frame deleted successfully', 'success');
-        } catch (error) {
-            this.ui.showAlert(error.message, 'error');
-        }
-    }
-
-    prevFrame() {
-        if (!this.state.isPlaying && this.state.frames.length > 1) {
-            this.state.currentFrame = (this.state.currentFrame - 1 + this.state.frames.length) % this.state.frames.length;
-            this.ui.drawFrame();
-            this.ui.updateFrameThumbnails();
-            this.state.saveToLocalStorage();
-        }
-    }
-
-    nextFrame() {
-        if (!this.state.isPlaying && this.state.frames.length > 1) {
-            this.state.currentFrame = (this.state.currentFrame + 1) % this.state.frames.length;
-            this.ui.drawFrame();
-            this.ui.updateFrameThumbnails();
-            this.state.saveToLocalStorage();
-        }
-    }
-
-    // Animation methods
-    playAnimation() {
-        if (this.state.isPlaying || this.state.frames.length < 2) return;
-        
-        this.state.isPlaying = true;
-        const speed = parseInt(this.ui.elements.animationSpeed.value) || 200;
-        
-        this.state.animationInterval = setInterval(() => {
-            this.state.currentFrame = (this.state.currentFrame + 1) % this.state.frames.length;
-            this.ui.drawFrame();
-            this.ui.updateFrameThumbnails();
-        }, speed);
-    }
-
-    pauseAnimation() {
-        this.state.isPlaying = false;
-        if (this.state.animationInterval) {
-            clearInterval(this.state.animationInterval);
-            this.state.animationInterval = null;
-        }
-    }
-
-    async importPNG(file) {
-        console.log('Starting PNG import...', file.name, file.size);
-        try {
-            const result = await this.fileOps.importPNG(file);
-            console.log('PNG import result:', result);
-            this.ui.showAlert(`PNG imported successfully! Found ${result.colorCount} unique colors.`, 'success');
+        while (true) {
+            drawBrush(x1, y1, false, frame);
             
-            // Update UI
-            this.ui.updateColorPalette();
-            this.ui.updateFrameThumbnails();
-            this.ui.drawFrame();
+            if (x1 === x2 && y1 === y2) break;
+            const e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x1 += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y1 += sy;
+            }
+        }
+    }
+    
+    function floodFill(x, y, targetColor, newColor, frame) {
+        if (targetColor === newColor) return;
+        
+        const stack = [[x, y]];
+        const visited = new Set();
+        
+        while (stack.length > 0) {
+            const [cx, cy] = stack.pop();
+            const key = `${cx},${cy}`;
             
-        } catch (error) {
-            console.error('PNG import error:', error);
-            this.ui.showAlert(error.message, 'error');
+            if (visited.has(key)) continue;
+            if (cx < 0 || cx >= state.canvasWidth || cy < 0 || cy >= state.canvasHeight) continue;
+            if (frame[cy][cx] !== targetColor) continue;
+            
+            frame[cy][cx] = newColor;
+            visited.add(key);
+            
+            stack.push([cx + 1, cy]);
+            stack.push([cx - 1, cy]);
+            stack.push([cx, cy + 1]);
+            stack.push([cx, cy - 1]);
         }
     }
 }
-
-// Initialize the app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing Sprite Editor...');
-    try {
-        window.spriteEditor = new SpriteEditorApp();
-        console.log('Sprite Editor initialized successfully');
-    } catch (error) {
-        console.error('Failed to initialize Sprite Editor:', error);
-        alert('Failed to initialize Sprite Editor. Please check the console for errors.');
-    }
-});

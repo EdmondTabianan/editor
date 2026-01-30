@@ -1,5 +1,5 @@
-import { SpriteEditorState, PIXEL_SIZE, MAX_COLORS } from './sprite-editor-state.js';
-
+import { SpriteEditorState } from './sprite-editor-state.js';
+import { PIXEL_SIZE, MAX_COLORS } from './constants.js';
 export class SpriteEditorFileOps {
     constructor(state, ui) {
         this.state = state;
@@ -21,12 +21,12 @@ export class SpriteEditorFileOps {
 
     findClosestColor(hex) {
         const targetRgb = this.hexToRgb(hex);
-        if (!targetRgb) return 0; // Changed from 1 to 0 - default to black
+        if (!targetRgb) return 0; // Default to transparent
         
-        let closestIndex = 0; // Changed from 1 to 0
+        let closestIndex = 0;
         let minDistance = Infinity;
         
-        for (let i = 0; i < this.state.palette.length; i++) { // Changed from starting at 1 to 0
+        for (let i = 0; i < this.state.palette.length; i++) {
             const rgb = this.hexToRgb(this.state.palette[i]);
             if (rgb) {
                 const distance = Math.sqrt(
@@ -52,8 +52,11 @@ export class SpriteEditorFileOps {
                 const img = new Image();
                 img.onload = () => {
                     // Validate dimensions
-                    if (img.width !== PIXEL_SIZE || img.height !== PIXEL_SIZE) {
-                        reject(new Error(`Image must be exactly ${PIXEL_SIZE}×${PIXEL_SIZE} pixels. Current size: ${img.width}×${img.height}`));
+                    const canvasWidth = this.state.canvasWidth || PIXEL_SIZE;
+                    const canvasHeight = this.state.canvasHeight || PIXEL_SIZE;
+                    
+                    if (img.width !== canvasWidth || img.height !== canvasHeight) {
+                        reject(new Error(`Image must be exactly ${canvasWidth}×${canvasHeight} pixels. Current size: ${img.width}×${img.height}`));
                         return;
                     }
                     
@@ -69,22 +72,20 @@ export class SpriteEditorFileOps {
     }
 
     async processImageData(img) {
-        console.log('Processing image data...', img.width, img.height);
+        const canvasWidth = this.state.canvasWidth || PIXEL_SIZE;
+        const canvasHeight = this.state.canvasHeight || PIXEL_SIZE;
+        
+        console.log('Processing image data...', img.width, img.height, 'Canvas size:', canvasWidth, canvasHeight);
         
         const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = PIXEL_SIZE;
-        tempCanvas.height = PIXEL_SIZE;
+        tempCanvas.width = canvasWidth;
+        tempCanvas.height = canvasHeight;
         const tempCtx = tempCanvas.getContext('2d');
         tempCtx.drawImage(img, 0, 0);
         
-        const imageData = tempCtx.getImageData(0, 0, PIXEL_SIZE, PIXEL_SIZE);
+        const imageData = tempCtx.getImageData(0, 0, canvasWidth, canvasHeight);
         const data = imageData.data;
         console.log('Image data length:', data.length);
-        
-        // Debug: Check first few pixels
-        for (let i = 0; i < Math.min(20, data.length); i += 4) {
-            console.log(`Pixel ${i/4}: R=${data[i]}, G=${data[i+1]}, B=${data[i+2]}, A=${data[i+3]}`);
-        }
         
         // Extract colors and create new frame
         const newFrame = this.state.createEmptyFrame();
@@ -93,9 +94,9 @@ export class SpriteEditorFileOps {
         
         // First pass: collect all unique colors (skip transparent)
         console.log('Collecting unique colors...');
-        for (let y = 0; y < PIXEL_SIZE; y++) {
-            for (let x = 0; x < PIXEL_SIZE; x++) {
-                const idx = (y * PIXEL_SIZE + x) * 4;
+        for (let y = 0; y < canvasHeight; y++) {
+            for (let x = 0; x < canvasWidth; x++) {
+                const idx = (y * canvasWidth + x) * 4;
                 const r = data[idx];
                 const g = data[idx + 1];
                 const b = data[idx + 2];
@@ -135,9 +136,9 @@ export class SpriteEditorFileOps {
         let opaquePixels = 0;
         let transparentPixels = 0;
         
-        for (let y = 0; y < PIXEL_SIZE; y++) {
-            for (let x = 0; x < PIXEL_SIZE; x++) {
-                const idx = (y * PIXEL_SIZE + x) * 4;
+        for (let y = 0; y < canvasHeight; y++) {
+            for (let x = 0; x < canvasWidth; x++) {
+                const idx = (y * canvasWidth + x) * 4;
                 const r = data[idx];
                 const g = data[idx + 1];
                 const b = data[idx + 2];
@@ -156,7 +157,6 @@ export class SpriteEditorFileOps {
         }
         
         console.log(`Frame populated: ${opaquePixels} opaque, ${transparentPixels} transparent`);
-        console.log('New frame sample (first row):', newFrame[0]);
         
         // Add the new frame
         this.state.frames.push(newFrame);
@@ -170,28 +170,34 @@ export class SpriteEditorFileOps {
 
     exportPNG() {
         const frame = this.state.frames[this.state.currentFrame];
+        const canvasWidth = this.state.canvasWidth || PIXEL_SIZE;
+        const canvasHeight = this.state.canvasHeight || PIXEL_SIZE;
+        
         const canvas = document.createElement('canvas');
-        canvas.width = PIXEL_SIZE;
-        canvas.height = PIXEL_SIZE;
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
         const ctx = canvas.getContext('2d');
         
         // Create transparent background
-        ctx.clearRect(0, 0, PIXEL_SIZE, PIXEL_SIZE);
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
         
         // Draw pixels (skip transparent pixels)
-        for (let y = 0; y < PIXEL_SIZE; y++) {
-            for (let x = 0; x < PIXEL_SIZE; x++) {
+        for (let y = 0; y < canvasHeight; y++) {
+            for (let x = 0; x < canvasWidth; x++) {
                 const colorIndex = frame[y][x];
-                if (colorIndex > 0) { // Only draw non-transparent pixels
-                    ctx.fillStyle = this.state.palette[colorIndex];
-                    ctx.fillRect(x, y, 1, 1);
+                if (colorIndex > 0 && colorIndex < this.state.palette.length) {
+                    const color = this.state.palette[colorIndex];
+                    if (color) {
+                        ctx.fillStyle = color;
+                        ctx.fillRect(x, y, 1, 1);
+                    }
                 }
             }
         }
         
         // Create download link
         const link = document.createElement('a');
-        link.download = `sprite_frame_${this.state.currentFrame}_${Date.now()}.png`;
+        link.download = `sprite_${canvasWidth}x${canvasHeight}_frame${this.state.currentFrame}_${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
     }
@@ -202,7 +208,7 @@ export class SpriteEditorFileOps {
         const blob = new Blob([jsonStr], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.download = `sprite_${Date.now()}.json`;
+        link.download = `sprite_${this.state.canvasWidth}x${this.state.canvasHeight}_${Date.now()}.json`;
         link.href = url;
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 100);
@@ -218,7 +224,7 @@ export class SpriteEditorFileOps {
                     this.ui.updateColorPalette();
                     this.ui.updateFrameThumbnails();
                     this.ui.drawFrame();
-                    this.ui.saveState();
+                    this.state.saveToLocalStorage();
                     resolve();
                 } catch (error) {
                     reject(new Error('Invalid JSON file: ' + error.message));

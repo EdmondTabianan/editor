@@ -301,61 +301,61 @@ function restoreAfterTileLoad(data) {
 }
 
 // Clear localStorage data and reset the editor
-// function clearLocalStorage() {
-//   if (confirm('Clear all saved map editor data from browser storage? This will:\n\n' +
-//              '• Remove all saved tiles and map data\n' +
-//              '• Clear undo/redo history\n' +
-//              '• Reset all preferences\n' +
-//              '• Reload the page\n\n' +
-//              'This cannot be undone!')) {
+function clearLocalStorage() {
+  if (confirm('Clear all saved map editor data from browser storage? This will:\n\n' +
+             '• Remove all saved tiles and map data\n' +
+             '• Clear undo/redo history\n' +
+             '• Reset all preferences\n' +
+             '• Reload the page\n\n' +
+             'This cannot be undone!')) {
     
-//     // Show loading/clearing message
-//     const originalText = $('#clearSessionBtn').text();
-//     $('#clearSessionBtn').text('Clearing...').prop('disabled', true);
+    // Show loading/clearing message
+    const originalText = $('#clearSessionBtn').text();
+    $('#clearSessionBtn').text('Clearing...').prop('disabled', true);
     
-//     // Clear all localStorage items related to the map editor
-//     localStorage.removeItem(STORAGE_KEY); // Main save data
-//     localStorage.removeItem('mapEditorTileSets'); // Tile sets
-//     localStorage.removeItem('mapEditorAutoSaves'); // Auto-saves
+    // Clear all localStorage items related to the map editor
+    localStorage.removeItem(STORAGE_KEY); // Main save data
+    localStorage.removeItem('mapEditorTileSets'); // Tile sets
+    localStorage.removeItem('mapEditorAutoSaves'); // Auto-saves
     
-//     // Also clear any other potential storage keys
-//     const keysToRemove = [];
-//     for (let i = 0; i < localStorage.length; i++) {
-//       const key = localStorage.key(i);
-//       if (key.includes('mapEditor') || key.includes('tileSet')) {
-//         keysToRemove.push(key);
-//       }
-//     }
+    // Also clear any other potential storage keys
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key.includes('mapEditor') || key.includes('tileSet')) {
+        keysToRemove.push(key);
+      }
+    }
     
-//     keysToRemove.forEach(key => {
-//       localStorage.removeItem(key);
-//     });
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+    });
     
-//     // Reset all variables to default state
-//     resetEditorToDefault();
+    // Reset all variables to default state
+    resetEditorToDefault();
     
-//     // Update UI
-//     updateTileGrid();
-//     drawMap();
-//     updateTileCount();
-//     updateSelectedInfo();
-//     updateUndoRedoButtons();
-//     updateHistoryStatus();
+    // Update UI
+    updateTileGrid();
+    drawMap();
+    updateTileCount();
+    updateSelectedInfo();
+    updateUndoRedoButtons();
+    updateHistoryStatus();
     
-//     // Reset button state after a short delay
-//     setTimeout(() => {
-//       $('#clearSessionBtn').text(originalText).prop('disabled', false);
+    // Reset button state after a short delay
+    setTimeout(() => {
+      $('#clearSessionBtn').text(originalText).prop('disabled', false);
       
-//       // Show confirmation
-//       alert('All saved data cleared successfully! The editor has been reset to default state.');
+      // Show confirmation
+      alert('All saved data cleared successfully! The editor has been reset to default state.');
       
-//       // Optionally reload the page for a clean start
-//       if (confirm('Reload page for a completely fresh start?')) {
-//         location.reload();
-//       }
-//     }, 500);
-//   }
-// }
+      // Optionally reload the page for a clean start
+      if (confirm('Reload page for a completely fresh start?')) {
+        location.reload();
+      }
+    }, 500);
+  }
+}
 
 // Reset editor to default state
 function resetEditorToDefault() {
@@ -1508,12 +1508,7 @@ function initEventListeners() {
             $('#removeLastTilesBtn').prop('disabled', false);
             setTimeout(saveToLocalStorage, 100);
             $('#importTileForMap').val('');
-            
-            // let message = `Added ${newFiles.length} new tile(s). Total: ${tileLibrary.length}/${MAX_TILES}`;
-            // if (duplicateFiles.length > 0) {
-            //   message += `\n(Skipped ${duplicateFiles.length} duplicate(s))`;
-            // }
-            // alert(message);
+          
           }
         };
         img.src = evt.target.result;
@@ -2389,6 +2384,53 @@ function updateSelectedInfo() {
   const selectedInfo = $('#selectedInfo');
   selectedInfo.text(`Selected: ${selectedTileIndices.size}`);
 }
+// === CUSTOM SCROLLBAR SUPPORT ===
+function setupCustomScrollbar() {
+  // Apply custom scrollbar styling to specific elements
+  const elements = [
+    document.getElementById('tileGrid'),
+    document.getElementById('mapContainer'),
+    document.querySelector('.scrollable')
+  ];
+  
+  elements.forEach(element => {
+    if (element) {
+      // Add CSS class for custom scrollbar styling
+      element.classList.add('custom-scrollbar');
+    }
+  });
+  
+  // Add CSS styles for custom scrollbars
+  const style = document.createElement('style');
+  style.textContent = `
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(100, 100, 100, 0.5);
+      border-radius: 4px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 100, 100, 0.7);
+    }
+    
+    /* For Firefox */
+    .custom-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(100, 100, 100, 0.5) rgba(0, 0, 0, 0.1);
+    }
+  `;
+  
+  document.head.appendChild(style);
+}
 
 // === Tile Management Functions ===
 function removeLastImportedTiles() {
@@ -2465,10 +2507,7 @@ function saveTileSet() {
       return;
     }
   }
-  
-  // Show saving message
-  // alert(`Saving ${tileLibrary.length} tiles... Please wait.`);
-  
+   
   // Create the tile set data
   const tileSet = {
     name: setName,
@@ -2494,7 +2533,6 @@ function saveTileSet() {
   localStorage.setItem('mapEditorTileSets', JSON.stringify(tileSets));
   
   currentSetName = setName;
-  // alert(`Tile set "${setName}" saved with ${tileSet.tiles.length} tiles`);
 }
 
 function loadTileSet() {
@@ -2580,7 +2618,6 @@ function loadTileSet() {
           // Enable/disable remove button
           $('#removeLastTilesBtn').prop('disabled', tileImportHistory.length === 0);
           
-          //alert(`Loaded tile set "${setName}" with ${tileLibrary.length} tiles`);
         }
       };
       img.src = tileData.data;

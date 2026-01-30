@@ -1,30 +1,20 @@
-// === Constants ===
-export const PIXEL_SIZE = 16;
-export const CANVAS_SCALE = 16;
-export const CANVAS_SIZE = PIXEL_SIZE * CANVAS_SCALE;
-export const MAX_FRAMES = 20;
-export const MAX_COLORS = 64;
-export const STORAGE_KEY = 'spriteEditorState';
-export const VERSION = '1.2';
 
-// Default palette (expanded with common colors)
-const DEFAULT_PALETTE = [
-    null,
-    '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF',
-    '#FFFF00', '#FF00FF', '#00FFFF', '#FF8800', '#8800FF',
-    '#0088FF', '#88FF00', '#FF0088', '#888888', '#444444',
-    '#888800', '#008888', '#880088', '#AA5500', '#5500AA'
-];
-
-// Add a transparent color constant
-export const TRANSPARENT_COLOR = null; // Use null for transparent
-
+import {
+    CANVAS_SIZES, DEFAULT_SIZE, PIXEL_SIZE, CANVAS_SCALE,
+    CANVAS_SIZE, MAX_FRAMES, MAX_COLORS, STORAGE_KEY, VERSION,
+    DEFAULT_PALETTE, TRANSPARENT_COLOR
+} from './constants.js';
 // === State Class ===
 export class SpriteEditorState {
     constructor() {
+        // Initialize with default canvas size
+        this.canvasSize = DEFAULT_SIZE;
+        this.canvasWidth = CANVAS_SIZES[DEFAULT_SIZE].width;
+        this.canvasHeight = CANVAS_SIZES[DEFAULT_SIZE].height;
+        
         this.frames = [];
         this.currentFrame = 0;
-        this.currentColor = 1;
+        this.currentColor = 1; // Default to black (index 1)
         this.currentTool = 'brush';
         this.brushSize = 1;
         this.isPlaying = false;
@@ -38,10 +28,10 @@ export class SpriteEditorState {
 
     createEmptyFrame() {
         const frame = [];
-        for (let y = 0; y < PIXEL_SIZE; y++) {
+        for (let y = 0; y < this.canvasHeight; y++) {
             frame[y] = [];
-            for (let x = 0; x < PIXEL_SIZE; x++) {
-                frame[y][x] = TRANSPARENT_COLOR; // Use null for transparent
+            for (let x = 0; x < this.canvasWidth; x++) {
+                frame[y][x] = 0; // Use 0 for transparent (null in palette)
             }
         }
         return frame;
@@ -51,6 +41,40 @@ export class SpriteEditorState {
         if (this.frames.length === 0) {
             this.frames.push(this.createEmptyFrame());
         }
+    }
+
+    resizeFrame(frame, newWidth, newHeight) {
+        const newFrame = [];
+        for (let y = 0; y < newHeight; y++) {
+            newFrame[y] = [];
+            for (let x = 0; x < newWidth; x++) {
+                if (y < frame.length && x < frame[y]?.length) {
+                    newFrame[y][x] = frame[y][x];
+                } else {
+                    newFrame[y][x] = 0; // Fill new areas with transparent
+                }
+            }
+        }
+        return newFrame;
+    }
+
+    changeCanvasSize(newSize) {
+        if (!CANVAS_SIZES[newSize]) {
+            throw new Error(`Invalid canvas size: ${newSize}`);
+        }
+
+        const newWidth = CANVAS_SIZES[newSize].width;
+        const newHeight = CANVAS_SIZES[newSize].height;
+        
+        // Resize all frames
+        this.frames = this.frames.map(frame => this.resizeFrame(frame, newWidth, newHeight));
+        
+        // Update canvas size properties
+        this.canvasSize = newSize;
+        this.canvasWidth = newWidth;
+        this.canvasHeight = newHeight;
+        
+        return { oldSize: this.canvasSize, newSize, newWidth, newHeight };
     }
 
     addFrame(copyCurrent = true) {
@@ -84,20 +108,20 @@ export class SpriteEditorState {
     }
 
     drawPixel(x, y, colorIndex = this.currentColor, brushSize = this.brushSize) {
-        if (x < 0 || x >= PIXEL_SIZE || y < 0 || y >= PIXEL_SIZE) return false;
+        if (x < 0 || x >= this.canvasWidth || y < 0 || y >= this.canvasHeight) return false;
         
         const frame = this.frames[this.currentFrame];
         
         if (brushSize === 1) {
-            frame[y][x] = colorIndex === -1 ? 0 : colorIndex; // Map -1 to 0 for eraser
+            frame[y][x] = colorIndex;
         } else {
             const radius = Math.floor(brushSize / 2);
             for (let dy = -radius; dy <= radius; dy++) {
                 for (let dx = -radius; dx <= radius; dx++) {
                     const px = x + dx;
                     const py = y + dy;
-                    if (px >= 0 && px < PIXEL_SIZE && py >= 0 && py < PIXEL_SIZE) {
-                        frame[py][px] = colorIndex === -1 ? 0 : colorIndex;
+                    if (px >= 0 && px < this.canvasWidth && py >= 0 && py < this.canvasHeight) {
+                        frame[py][px] = colorIndex;
                     }
                 }
             }
@@ -107,7 +131,7 @@ export class SpriteEditorState {
     }
 
     fillArea(x, y, targetColor, fillColor) {
-        if (x < 0 || x >= PIXEL_SIZE || y < 0 || y >= PIXEL_SIZE) return;
+        if (x < 0 || x >= this.canvasWidth || y < 0 || y >= this.canvasHeight) return;
         
         const frame = this.frames[this.currentFrame];
         if (frame[y][x] !== targetColor || targetColor === fillColor) return;
@@ -116,7 +140,7 @@ export class SpriteEditorState {
         
         while (stack.length > 0) {
             const [cx, cy] = stack.pop();
-            if (cx < 0 || cx >= PIXEL_SIZE || cy < 0 || cy >= PIXEL_SIZE) continue;
+            if (cx < 0 || cx >= this.canvasWidth || cy < 0 || cy >= this.canvasHeight) continue;
             if (frame[cy][cx] !== targetColor) continue;
             
             frame[cy][cx] = fillColor;
@@ -130,9 +154,9 @@ export class SpriteEditorState {
 
     drawRectangle(x1, y1, x2, y2, colorIndex) {
         const startX = Math.max(0, Math.min(x1, x2));
-        const endX = Math.min(PIXEL_SIZE - 1, Math.max(x1, x2));
+        const endX = Math.min(this.canvasWidth - 1, Math.max(x1, x2));
         const startY = Math.max(0, Math.min(y1, y2));
-        const endY = Math.min(PIXEL_SIZE - 1, Math.max(y1, y2));
+        const endY = Math.min(this.canvasHeight - 1, Math.max(y1, y2));
         
         const frame = this.frames[this.currentFrame];
         for (let y = startY; y <= endY; y++) {
@@ -151,7 +175,7 @@ export class SpriteEditorState {
         let err = dx - dy;
         
         while (true) {
-            if (x1 >= 0 && x1 < PIXEL_SIZE && y1 >= 0 && y1 < PIXEL_SIZE) {
+            if (x1 >= 0 && x1 < this.canvasWidth && y1 >= 0 && y1 < this.canvasHeight) {
                 frame[y1][x1] = colorIndex;
             }
             
@@ -205,10 +229,10 @@ export class SpriteEditorState {
         
         // Update all frames to use index 0 for deleted color
         for (let f = 0; f < this.frames.length; f++) {
-            for (let y = 0; y < PIXEL_SIZE; y++) {
-                for (let x = 0; x < PIXEL_SIZE; x++) {
+            for (let y = 0; y < this.canvasHeight; y++) {
+                for (let x = 0; x < this.canvasWidth; x++) {
                     if (this.frames[f][y][x] === index) {
-                        this.frames[f][y][x] = 0; // Changed to 0 (black)
+                        this.frames[f][y][x] = 0; // Changed to 0 (transparent)
                     } else if (this.frames[f][y][x] > index) {
                         this.frames[f][y][x]--;
                     }
@@ -218,7 +242,7 @@ export class SpriteEditorState {
         
         // Adjust current color if needed
         if (this.currentColor === index) {
-            this.currentColor = 0; // Changed from 1 to 0 - default to black when deleting current color
+            this.currentColor = 1; // Default to black when deleting current color
         } else if (this.currentColor > index) {
             this.currentColor--;
         }
@@ -226,6 +250,9 @@ export class SpriteEditorState {
 
     getStateForExport() {
         return {
+            canvasSize: this.canvasSize,
+            canvasWidth: this.canvasWidth,
+            canvasHeight: this.canvasHeight,
             palette: this.palette,
             frames: this.frames,
             currentFrame: this.currentFrame,
@@ -234,7 +261,6 @@ export class SpriteEditorState {
             brushSize: this.brushSize,
             showGrid: this.showGrid,
             showCheckerboard: this.showCheckerboard,
-            size: PIXEL_SIZE,
             version: this.version,
             exported: new Date().toISOString()
         };
@@ -244,6 +270,18 @@ export class SpriteEditorState {
         // Validate state
         if (!state || !state.palette || !state.frames) {
             throw new Error('Invalid state format');
+        }
+
+        // Handle canvas size (for backward compatibility)
+        if (state.canvasSize && CANVAS_SIZES[state.canvasSize]) {
+            this.canvasSize = state.canvasSize;
+            this.canvasWidth = state.canvasWidth || CANVAS_SIZES[state.canvasSize].width;
+            this.canvasHeight = state.canvasHeight || CANVAS_SIZES[state.canvasSize].height;
+        } else {
+            // Legacy: assume 16x16
+            this.canvasSize = DEFAULT_SIZE;
+            this.canvasWidth = 16;
+            this.canvasHeight = 16;
         }
 
         // Merge palettes, preserving defaults
@@ -265,13 +303,17 @@ export class SpriteEditorState {
             }
         });
 
-        // Remap frames
+        // Remap frames and resize if needed
         const remappedFrames = state.frames.map(frame => {
+            // First resize if needed
+            const resizedFrame = this.resizeFrame(frame, this.canvasWidth, this.canvasHeight);
+            
+            // Then remap colors
             const newFrame = [];
-            for (let y = 0; y < PIXEL_SIZE; y++) {
+            for (let y = 0; y < this.canvasHeight; y++) {
                 newFrame[y] = [];
-                for (let x = 0; x < PIXEL_SIZE; x++) {
-                    const oldIndex = frame[y]?.[x] || 0;
+                for (let x = 0; x < this.canvasWidth; x++) {
+                    const oldIndex = resizedFrame[y]?.[x] || 0;
                     newFrame[y][x] = colorMap.get(oldIndex) || 0;
                 }
             }
@@ -279,22 +321,21 @@ export class SpriteEditorState {
         });
 
         this.palette = mergedPalette;
-        this.frames = remappedFrames;
+        this.frames = remappedFrames.length > 0 ? remappedFrames : [this.createEmptyFrame()];
         this.currentFrame = Math.min(state.currentFrame || 0, remappedFrames.length - 1);
         this.currentColor = Math.min(state.currentColor || 1, mergedPalette.length - 1);
         this.currentTool = state.currentTool || 'brush';
         this.brushSize = state.brushSize || 1;
         this.showGrid = state.showGrid !== undefined ? state.showGrid : true;
         this.showCheckerboard = state.showCheckerboard !== undefined ? state.showCheckerboard : true;
-        
-        if (this.frames.length === 0) {
-            this.frames.push(this.createEmptyFrame());
-        }
     }
 
     saveToLocalStorage() {
         try {
             const state = {
+                canvasSize: this.canvasSize,
+                canvasWidth: this.canvasWidth,
+                canvasHeight: this.canvasHeight,
                 palette: this.palette,
                 frames: this.frames,
                 currentFrame: this.currentFrame,
@@ -330,5 +371,15 @@ export class SpriteEditorState {
 
     clearLocalStorage() {
         localStorage.removeItem(STORAGE_KEY);
+    }
+
+    // Helper method for UI to get available sizes
+    static getAvailableSizes() {
+        return Object.keys(CANVAS_SIZES);
+    }
+
+    // Helper method to get current size as string
+    getCurrentSizeString() {
+        return `${this.canvasWidth}×${this.canvasHeight}`;
     }
 }
